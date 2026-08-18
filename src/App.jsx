@@ -16,7 +16,7 @@ import {
   INITIAL_JOBS, 
   INITIAL_APPLICATIONS 
 } from './data/skillsData';
-import { logoutUser } from './services/api';
+import { logoutUser, fetchJobs, fetchApplications } from './services/api';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
@@ -29,14 +29,73 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('student-dashboard');
   const [student, setStudent] = useState(INITIAL_STUDENT);
-  const [jobs, setJobs] = useState(INITIAL_JOBS);
-  const [applications, setApplications] = useState(INITIAL_APPLICATIONS);
+  
+  // Persist jobs list in state & localStorage
+  const [jobs, setJobs] = useState(() => {
+    const savedJobs = localStorage.getItem('skillbridge_jobs');
+    if (savedJobs) {
+      try {
+        const parsed = JSON.parse(savedJobs);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) { }
+    }
+    return INITIAL_JOBS;
+  });
+
+  // Persist applications list in state & localStorage
+  const [applications, setApplications] = useState(() => {
+    const savedApps = localStorage.getItem('skillbridge_apps');
+    if (savedApps) {
+      try {
+        const parsed = JSON.parse(savedApps);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) { }
+    }
+    return INITIAL_APPLICATIONS;
+  });
+
+  // Fetch real jobs from MySQL Backend Database
+  const refreshJobsFromDatabase = async () => {
+    try {
+      const dbJobs = await fetchJobs();
+      if (dbJobs && Array.isArray(dbJobs) && dbJobs.length > 0) {
+        setJobs(dbJobs);
+        localStorage.setItem('skillbridge_jobs', JSON.stringify(dbJobs));
+      }
+    } catch (err) {
+      console.warn("Fallback to local jobs state:", err);
+    }
+  };
+
+  // Fetch real applications from MySQL Backend Database
+  const refreshApplicationsFromDatabase = async () => {
+    try {
+      const dbApps = await fetchApplications();
+      if (dbApps && Array.isArray(dbApps) && dbApps.length > 0) {
+        setApplications(dbApps);
+        localStorage.setItem('skillbridge_apps', JSON.stringify(dbApps));
+      }
+    } catch (err) {
+      console.warn("Fallback to local applications state:", err);
+    }
+  };
+
+  useEffect(() => {
+    refreshJobsFromDatabase();
+    refreshApplicationsFromDatabase();
+  }, []);
+
   const [selectedJobForRoadmap, setSelectedJobForRoadmap] = useState(null);
   
   // Modals & Auth state
   const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalDefaultRole, setAuthModalDefaultRole] = useState('Student');
+
+  // Sync applications to localStorage whenever applications state changes
+  useEffect(() => {
+    localStorage.setItem('skillbridge_apps', JSON.stringify(applications));
+  }, [applications]);
 
   // Synchronize student profile object with logged-in user whenever currentUser changes
   useEffect(() => {
@@ -60,6 +119,8 @@ export default function App() {
   // Handle successful authentication (Login or Register)
   const handleAuthSuccess = (userData) => {
     setCurrentUser(userData);
+    refreshJobsFromDatabase();
+    refreshApplicationsFromDatabase();
 
     // Update student name & details dynamically
     setStudent(prev => ({
@@ -127,6 +188,7 @@ export default function App() {
                 setApplications={setApplications}
                 setActiveTab={setActiveTab}
                 setSelectedJobForRoadmap={setSelectedJobForRoadmap}
+                refreshApplicationsFromDatabase={refreshApplicationsFromDatabase}
               />
             )}
 
@@ -146,6 +208,8 @@ export default function App() {
                 student={student}
                 applications={applications}
                 setApplications={setApplications}
+                refreshJobsFromDatabase={refreshJobsFromDatabase}
+                refreshApplicationsFromDatabase={refreshApplicationsFromDatabase}
               />
             )}
 
@@ -167,6 +231,7 @@ export default function App() {
               <ApplicationTracker
                 applications={applications}
                 setApplications={setApplications}
+                refreshApplicationsFromDatabase={refreshApplicationsFromDatabase}
               />
             )}
           </div>

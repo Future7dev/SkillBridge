@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SkillBridge.Api.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -85,6 +86,87 @@ namespace SkillBridge.Api.Data
                 };
                 StudentProfiles.Add(alexProfile);
                 SaveChanges();
+            }
+
+            // Seed Default Job Postings into MySQL Database if empty
+            if (!Jobs.Any())
+            {
+                var recruiter = Users.FirstOrDefault(u => u.Role == "Recruiter") ?? Users.First();
+                
+                var job1 = new Job
+                {
+                    RecruiterId = recruiter.UserId,
+                    JobTitle = "Junior Backend Engineer (C# / .NET Core)",
+                    CompanyName = "TechBridge Systems",
+                    Location = "Remote / Hybrid",
+                    EmploymentType = "Internship",
+                    ExperienceLevel = "Entry-Level",
+                    Description = "Seeking a motivated junior backend engineer with hands-on C#, ASP.NET Core Web API, and relational database skills.",
+                    PostedDate = DateTime.UtcNow,
+                    Status = "Active"
+                };
+
+                var job2 = new Job
+                {
+                    RecruiterId = recruiter.UserId,
+                    JobTitle = "Cloud & DevOps Intern (Docker / Azure)",
+                    CompanyName = "CloudScale Solutions",
+                    Location = "New York, NY (Hybrid)",
+                    EmploymentType = "Internship",
+                    ExperienceLevel = "Entry-Level",
+                    Description = "Join our DevOps microservices infrastructure team. Help build containerized CI/CD pipelines using Docker and deploy to Azure.",
+                    PostedDate = DateTime.UtcNow,
+                    Status = "Active"
+                };
+
+                Jobs.AddRange(job1, job2);
+                SaveChanges();
+
+                var csharpSkill = Skills.FirstOrDefault(s => s.CanonicalCode == "csharp");
+                var aspnetSkill = Skills.FirstOrDefault(s => s.CanonicalCode == "aspnet_core");
+                var sqlSkill = Skills.FirstOrDefault(s => s.CanonicalCode == "sql_server");
+                var dockerSkill = Skills.FirstOrDefault(s => s.CanonicalCode == "docker");
+
+                if (csharpSkill != null && aspnetSkill != null && sqlSkill != null)
+                {
+                    JobSkills.AddRange(
+                        new JobSkill { JobId = job1.JobId, SkillId = csharpSkill.SkillId, RequiredProficiency = 3, SkillWeight = 25, IsRequired = true },
+                        new JobSkill { JobId = job1.JobId, SkillId = aspnetSkill.SkillId, RequiredProficiency = 3, SkillWeight = 25, IsRequired = true },
+                        new JobSkill { JobId = job1.JobId, SkillId = sqlSkill.SkillId, RequiredProficiency = 3, SkillWeight = 20, IsRequired = true }
+                    );
+                }
+
+                if (dockerSkill != null)
+                {
+                    JobSkills.AddRange(
+                        new JobSkill { JobId = job2.JobId, SkillId = dockerSkill.SkillId, RequiredProficiency = 3, SkillWeight = 30, IsRequired = true }
+                    );
+                }
+
+                SaveChanges();
+            }
+
+            // Seed Initial Student Applications into MySQL Database if empty
+            if (!Applications.Any())
+            {
+                var studentUser = Users.FirstOrDefault(u => u.Role == "Student") ?? Users.First();
+                var job = Jobs.FirstOrDefault();
+
+                if (job != null)
+                {
+                    var seedApp = new Application
+                    {
+                        UserId = studentUser.UserId,
+                        JobId = job.JobId,
+                        ApplicationDate = DateTime.UtcNow,
+                        MatchScorePct = 78m,
+                        Status = "Under Review",
+                        Notes = "Initial application screened by automated TF-IDF model."
+                    };
+
+                    Applications.Add(seedApp);
+                    SaveChanges();
+                }
             }
         }
     }
