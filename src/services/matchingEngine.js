@@ -1,4 +1,5 @@
 import { SKILL_DEPENDENCIES, CANONICAL_SKILLS } from '../data/skillsData';
+import { extractSkillsFromText, calculateTfidfCosineSimilarity } from './nlpEngine';
 
 /**
  * Calculate Effective Proficiency for a student skill
@@ -13,7 +14,6 @@ export function getEffectiveProficiency(studentSkillRecord) {
 
 /**
  * Calculate complete match metrics between a student and a job requirement
- * Exact formulas from SkillBridge Document Sections 6, 7, 8, 9
  */
 export function calculateJobMatch(student, job) {
   if (!student || !job) {
@@ -28,11 +28,25 @@ export function calculateJobMatch(student, job) {
     };
   }
 
-  // Normalize skill requirements array from either skillsRequired or jobSkills
   const rawSkills = job.skillsRequired || job.jobSkills || [];
-  
-  // Default fallback requirements if no specific skills were specified
-  const skillsRequired = rawSkills.length > 0 ? rawSkills.map(sk => ({
+  const textSkills = extractSkillsFromText(job.description || '');
+  const existingSkillIds = new Set(rawSkills.map(s => s.skillId || s.skill?.canonicalCode));
+
+  const mergedSkills = [...rawSkills];
+  textSkills.forEach(ts => {
+    if (!existingSkillIds.has(ts.skillId)) {
+      mergedSkills.push({
+        skillId: ts.skillId,
+        skillName: ts.skillName,
+        requiredProficiency: ts.detectedProficiency || 3,
+        weight: 15,
+        importance: 'Required'
+      });
+      existingSkillIds.add(ts.skillId);
+    }
+  });
+
+  const skillsRequired = mergedSkills.length > 0 ? mergedSkills.map(sk => ({
     skillId: sk.skillId || sk.skill?.canonicalCode || 'csharp',
     skillName: sk.skillName || sk.skill?.skillName || 'C#',
     requiredProficiency: sk.requiredProficiency || 3,
@@ -74,15 +88,10 @@ export function calculateJobMatch(student, job) {
     const priorityScore = gap * weight * importanceMultiplier;
 
     let gapCategory = 'Strong Match';
-    if (gap === 0) {
-      gapCategory = 'Strong Match';
-    } else if (gap === 1) {
-      gapCategory = 'Low Gap';
-    } else if (gap === 2) {
-      gapCategory = 'Medium Gap';
-    } else {
-      gapCategory = 'High Gap';
-    }
+    if (gap === 0) gapCategory = 'Strong Match';
+    else if (gap === 1) gapCategory = 'Low Gap';
+    else if (gap === 2) gapCategory = 'Medium Gap';
+    else gapCategory = 'High Gap';
 
     const item = {
       skillId: req.skillId,
@@ -98,7 +107,6 @@ export function calculateJobMatch(student, job) {
     };
 
     skillBreakdown.push(item);
-
     if (gap === 0) strongSkills.push(item);
     else if (gap === 1) lowGaps.push(item);
     else if (gap === 2) mediumGaps.push(item);
@@ -126,83 +134,88 @@ export function calculateJobMatch(student, job) {
 }
 
 /**
- * Generate Prerequisite-Aware Personalized Learning Roadmap
+ * Generate Personalized Learning Roadmap STRICTLY based on NLP text extraction from Job Description and Student Resume Text
  */
 export function generatePersonalizedRoadmap(student, targetJob) {
-  const matchResult = calculateJobMatch(student, targetJob);
-  const gaps = matchResult.skillBreakdown.filter(s => s.gap > 0);
+  const resumeText = student?.resumeText || `${student?.name || ''} ${student?.degree || ''} ${student?.university || ''}`;
+  const jobDesc = targetJob?.description || `${targetJob?.title || ''} ${targetJob?.company || ''}`;
 
-  if (gaps.length === 0) {
+  // 1. Extract skills from Job Description text using NLP NER
+  const extractedJdSkills = extractSkillsFromText(jobDesc);
+  
+  // 2. Extract skills from Student Resume text using NLP NER
+  const extractedResumeSkills = extractSkillsFromText(resumeText);
+  const resumeSkillSet = new Set(extractedResumeSkills.map(s => s.skillId));
+
+  // 3. Skill Gaps = Extracted JD text skills NOT present in Extracted Resume text skills
+  const missingGaps = extractedJdSkills.filter(sk => !resumeSkillSet.has(sk.skillId));
+
+  // Compute TF-IDF Cosine Similarity score
+  const tfidfScore = calculateTfidfCosineSimilarity(resumeText, jobDesc);
+
+  if (missingGaps.length === 0) {
     return {
       roadmap: [],
-      topRecommendation: "You are fully qualified for this role! Focus on building advanced projects.",
-      isComplete: true
+      topRecommendation: "NLP text analysis shows your resume covers all skills extracted from this job description!",
+      isComplete: true,
+      tfidfScore,
+      extractedJdSkills,
+      extractedResumeSkills
     };
   }
 
-  const gapMap = new Map();
-  gaps.forEach(g => gapMap.set(g.skillId, g));
-
-  const studentSkillMap = new Map();
-  (student.skills || []).forEach(s => {
-    studentSkillMap.set(s.skillId, getEffectiveProficiency(s));
-  });
-
+  // 4. Prerequisite-aware Topological Graph Sorting
   const orderedSkills = [];
   const processed = new Set();
 
-  function processSkill(skillId) {
+  function processSkill(skillId, skillName) {
     if (processed.has(skillId)) return;
 
     const prereqs = SKILL_DEPENDENCIES[skillId] || [];
     for (const prereqId of prereqs) {
-      const studentProf = studentSkillMap.get(prereqId) || 0;
-      if (studentProf < 2) {
-        processSkill(prereqId);
+      if (!resumeSkillSet.has(prereqId) && !processed.has(prereqId)) {
+        const pObj = CANONICAL_SKILLS.find(c => c.id === prereqId);
+        if (pObj) {
+          processSkill(prereqId, pObj.name);
+        }
       }
     }
 
     processed.add(skillId);
 
-    const gapData = gapMap.get(skillId);
     const canonical = CANONICAL_SKILLS.find(c => c.id === skillId);
-    const skillName = gapData ? gapData.skillName : (canonical ? canonical.name : skillId);
-    const currentLevel = studentSkillMap.get(skillId) || 0;
-    const targetLevel = gapData ? gapData.requiredProficiency : 3;
-    const gapVal = gapData ? gapData.gap : Math.max(targetLevel - currentLevel, 1);
-    const priority = gapData ? gapData.priorityScore : gapVal * 10;
+    const finalName = skillName || (canonical ? canonical.name : skillId);
 
     orderedSkills.push({
       skillId,
-      skillName,
-      currentLevel,
-      targetLevel,
-      gap: gapVal,
-      priorityScore: priority,
+      skillName: finalName,
+      extractedFromDesc: true,
+      currentLevel: resumeSkillSet.has(skillId) ? 2 : 0,
+      targetLevel: 4,
+      gap: resumeSkillSet.has(skillId) ? 2 : 3,
       prerequisites: prereqs.map(p => {
         const pObj = CANONICAL_SKILLS.find(c => c.id === p);
         return pObj ? pObj.name : p;
       }),
-      reason: gapData 
-        ? `High priority gap (${gapVal} levels missing, weight: ${gapData.weight}).`
-        : `Prerequisite dependency required before advanced topics.`
+      reason: `NLP Text Extraction: "${finalName}" was identified in the Job Description text as a core requirement not found in student's resume text.`
     });
   }
 
-  const sortedGaps = [...gaps].sort((a, b) => b.priorityScore - a.priorityScore);
-
-  sortedGaps.forEach(gapItem => {
-    processSkill(gapItem.skillId);
+  missingGaps.forEach(g => {
+    processSkill(g.skillId, g.skillName);
   });
 
   const topSkill = orderedSkills[0];
   const topRecommendation = topSkill 
-    ? `Learn ${topSkill.skillName} first to close your primary gap of ${topSkill.gap} proficiency levels.`
-    : "Follow your custom roadmap below.";
+    ? `NLP Text Extraction recommends learning ${topSkill.skillName} first based on text analysis of ${targetJob?.title || targetJob?.jobTitle}.`
+    : "Follow your custom text-extracted roadmap below.";
 
   return {
     roadmap: orderedSkills,
     topRecommendation,
-    isComplete: false
+    isComplete: false,
+    tfidfScore,
+    extractedJdSkills,
+    extractedResumeSkills
   };
 }

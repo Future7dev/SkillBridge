@@ -147,7 +147,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#0b0f19] text-slate-100 selection:bg-indigo-500 selection:text-white">
       
-      {/* Top Navbar: ONLY rendered when a user is signed in! */}
+      {/* Top Navbar */}
       {currentUser && (
         <Navbar
           activeTab={activeTab}
@@ -158,7 +158,7 @@ export default function App() {
         />
       )}
 
-      {/* Main Content Area */}
+      {/* Main Content Area - Expanded to full display width */}
       <main className="flex-1 w-full">
         {!currentUser ? (
           /* Render Landing Page when user is logged out / visitor */
@@ -166,8 +166,8 @@ export default function App() {
             onOpenAuthModal={openAuthModalWithRole}
           />
         ) : (
-          /* Render Active User Dashboard View */
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          /* Render Active User Dashboard View with expanded width */
+          <div className="w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {activeTab === 'student-dashboard' && (
               <StudentDashboard
                 student={student}
@@ -255,10 +255,10 @@ export default function App() {
         defaultRole={authModalDefaultRole}
       />
 
-      {/* Footer */}
+      {/* Footer - Full Display Width */}
       {currentUser && (
         <footer className="w-full border-t border-slate-800/80 bg-[#070a12] py-6 mt-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+          <div className="w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
             <div>
               <span className="font-bold text-slate-300">SkillBridge</span> — ASP.NET Core Web API + MySQL Database
               <span className="block sm:inline text-slate-600 sm:ml-2">Understand your skills. Find your gaps. Build your career.</span>

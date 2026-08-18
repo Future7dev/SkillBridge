@@ -46,7 +46,7 @@ export async function deleteJobPosting(jobId) {
 }
 
 /**
- * Fetch Applications API (Queries MySQL Database `applications` table)
+ * Fetch Applications API
  */
 export async function fetchApplications() {
   const res = await fetch(`${API_BASE_URL}/applications`);
@@ -55,7 +55,7 @@ export async function fetchApplications() {
 }
 
 /**
- * Create Application API (Stores student application in MySQL Database)
+ * Create Application API
  */
 export async function createApplicationApi(appData) {
   const res = await fetch(`${API_BASE_URL}/applications`, {
@@ -81,7 +81,7 @@ export async function updateApplicationStatusApi(appId, status, notes) {
 }
 
 /**
- * Delete Application API (Student Opt Out / Recruiter Rejection in MySQL DB)
+ * Delete Application API
  */
 export async function deleteApplicationApi(appId) {
   const res = await fetch(`${API_BASE_URL}/applications/${appId}`, {
@@ -93,7 +93,21 @@ export async function deleteApplicationApi(appId) {
 }
 
 /**
- * Universal Login API - STRICT VALIDATION (No Mock Login Fallback for non-existent users)
+ * Python 3.12 NLP Engine Analysis API
+ * Invokes Python TF-IDF Vectorization, Cosine Similarity & NER Skill Extraction
+ */
+export async function analyzePythonNlp(resumeText, jobDescription) {
+  const res = await fetch(`${API_BASE_URL}/nlp/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resumeText, jobDescription })
+  });
+  if (!res.ok) throw new Error('Failed to execute Python NLP analysis engine.');
+  return await res.json();
+}
+
+/**
+ * Universal Login API
  */
 export async function loginUser(email, password, role) {
   const res = await fetch(`${API_BASE_URL}/auth/login`, {
