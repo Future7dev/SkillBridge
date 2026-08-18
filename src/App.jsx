@@ -145,6 +145,7 @@ export default function App() {
                 setJobs={setJobs}
                 student={student}
                 applications={applications}
+                setApplications={setApplications}
               />
             )}
 

@@ -25,16 +25,22 @@ export default function JobExplorer({
 }) {
   const [selectedJobForModal, setSelectedJobForModal] = useState(null);
 
-  // Apply to job handler
+  // Apply to job handler (stores student details so recruiter sees the applicant!)
   const handleApply = (job, matchScore) => {
-    const existing = applications.find(a => a.jobId === job.id);
+    const targetJobId = job.id || job.jobId;
+    const existing = applications.find(a => a.jobId === targetJobId);
     if (existing) return;
 
     const newApp = {
       id: `app-${Date.now()}`,
-      jobId: job.id,
-      jobTitle: job.title,
-      company: job.company,
+      jobId: targetJobId,
+      jobTitle: job.title || job.jobTitle,
+      company: job.company || job.companyName,
+      studentId: student.id,
+      studentName: student.name,
+      studentEmail: student.email,
+      degree: student.degree,
+      institution: student.university,
       appliedDate: new Date().toISOString().split('T')[0],
       status: "Under Review",
       matchScore: matchScore,
@@ -54,7 +60,7 @@ export default function JobExplorer({
         <div>
           <h1 className="text-2xl font-black text-white flex items-center space-x-3">
             <Briefcase className="w-6 h-6 text-indigo-400" />
-            <span>Internship & Job Postings</span>
+            <span>Internship & Job Postings ({jobs.length} Open Positions)</span>
           </h1>
           <p className="text-sm text-slate-400 mt-1">
             Real-time weighted skill matching automatically computes your fit score for each role.
@@ -65,12 +71,13 @@ export default function JobExplorer({
       {/* Job Postings Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {jobs.map((job) => {
+          const jobId = job.id || job.jobId;
           const matchResult = calculateJobMatch(student, job);
-          const isApplied = applications.some(a => a.jobId === job.id);
+          const isApplied = applications.some(a => a.jobId === jobId);
 
           return (
             <div 
-              key={job.id} 
+              key={jobId} 
               className="glass-panel p-6 rounded-2xl flex flex-col justify-between glass-panel-hover group relative overflow-hidden"
             >
               <div className="space-y-4">
@@ -79,12 +86,12 @@ export default function JobExplorer({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
-                      {job.type}
+                      {job.type || job.employmentType || 'Internship'}
                     </span>
                     <h3 className="font-bold text-lg text-white mt-1 group-hover:text-indigo-300 transition-colors">
-                      {job.title}
+                      {job.title || job.jobTitle}
                     </h3>
-                    <p className="text-xs font-semibold text-slate-300">{job.company}</p>
+                    <p className="text-xs font-semibold text-slate-300">{job.company || job.companyName}</p>
                   </div>
 
                   {/* Calculated Score Pill */}
@@ -171,17 +178,17 @@ export default function JobExplorer({
         })}
       </div>
 
-      {/* Modal: Full Gap Analysis & Explainable Breakdown */}
+      {/* Modal: Full Gap Analysis */}
       {selectedJobForModal && (() => {
         const modalJob = selectedJobForModal;
         const res = calculateJobMatch(student, modalJob);
-        const isApplied = applications.some(a => a.jobId === modalJob.id);
+        const jobId = modalJob.id || modalJob.jobId;
+        const isApplied = applications.some(a => a.jobId === jobId);
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
             <div className="glass-panel w-full max-w-3xl rounded-2xl max-h-[90vh] overflow-y-auto border border-indigo-500/30 p-6 sm:p-8 space-y-6 shadow-2xl relative">
               
-              {/* Close Button */}
               <button 
                 onClick={() => setSelectedJobForModal(null)}
                 className="absolute top-6 right-6 p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors"
@@ -189,12 +196,11 @@ export default function JobExplorer({
                 <X className="w-5 h-5" />
               </button>
 
-              {/* Job Modal Title & Match Header */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
                 <div>
-                  <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">{modalJob.company}</span>
-                  <h2 className="text-2xl font-black text-white">{modalJob.title}</h2>
-                  <p className="text-xs text-slate-400 mt-1">{modalJob.location} • {modalJob.type}</p>
+                  <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">{modalJob.company || modalJob.companyName}</span>
+                  <h2 className="text-2xl font-black text-white">{modalJob.title || modalJob.jobTitle}</h2>
+                  <p className="text-xs text-slate-400 mt-1">{modalJob.location} • {modalJob.type || modalJob.employmentType}</p>
                 </div>
 
                 <div className="flex items-center space-x-3 bg-slate-900/90 p-4 rounded-xl border border-indigo-500/30">
@@ -215,7 +221,6 @@ export default function JobExplorer({
                     <Layers className="w-4 h-4 text-indigo-400" />
                     <span>Explainable Skill Gap Breakdown</span>
                   </h3>
-                  <span className="text-xs text-slate-400">Section 7 & 8 Matching Formulas</span>
                 </div>
 
                 <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60">
@@ -237,11 +242,11 @@ export default function JobExplorer({
                           <td className="p-3 font-bold text-white">{item.skillName}</td>
                           <td className="p-3">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                              item.importance === 'Required' 
+                              item.importance === 'Required' || item.isRequired
                                 ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
                                 : 'bg-slate-800 text-slate-400'
                             }`}>
-                              {item.importance}
+                              {item.importance || (item.isRequired ? 'Required' : 'Preferred')}
                             </span>
                           </td>
                           <td className="p-3 text-center font-mono font-bold text-indigo-300">{item.requiredProficiency}</td>
