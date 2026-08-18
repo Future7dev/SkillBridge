@@ -88,9 +88,9 @@ export default function ResumeAnalyzerModal({
             <BrainCircuit className="w-5 h-5 animate-pulse" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white">NLP Resume & Skill Extraction Service</h2>
+            <h2 className="text-xl font-bold text-white">Resume Skill Scanner</h2>
             <p className="text-xs text-slate-400">
-              Scans unstructured resume text for canonical skills using dictionary NER and calculates TF-IDF vector relevance.
+              Paste your resume text below to automatically detect your skills and calculate how well you match a job posting.
             </p>
           </div>
         </div>
@@ -99,7 +99,7 @@ export default function ResumeAnalyzerModal({
         <div className="space-y-4 text-xs">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-slate-300 font-semibold">Target Job for TF-IDF Cosine Similarity Benchmark:</label>
+              <label className="text-slate-300 font-semibold">Target Job for Match Score Calculation:</label>
             </div>
             <select
               value={selectedJobId}
@@ -131,12 +131,12 @@ export default function ResumeAnalyzerModal({
             {isAnalyzing ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Running NLP Pipeline (Tokenize → TF-IDF → NER)...</span>
+                <span>Analyzing your resume...</span>
               </>
             ) : (
               <>
                 <Zap className="w-4 h-4" />
-                <span>Extract Skills & Compute TF-IDF Cosine Similarity</span>
+                <span>Detect Skills & Calculate Match Score</span>
               </>
             )}
           </button>
@@ -148,7 +148,7 @@ export default function ResumeAnalyzerModal({
             
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <span className="text-[10px] uppercase font-bold text-indigo-400 tracking-wider">TF-IDF Similarity Score</span>
+                <span className="text-[10px] uppercase font-bold text-indigo-400 tracking-wider">Job Match Score</span>
                 <div className="text-2xl font-black text-white">{analysisResult.tfidfScore}% Match</div>
               </div>
               <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold text-[11px]">
@@ -158,7 +158,7 @@ export default function ResumeAnalyzerModal({
 
             {/* Extracted Skills List */}
             <div className="space-y-2">
-              <span className="text-slate-300 font-bold block">Extracted Canonical Entities:</span>
+              <span className="text-slate-300 font-bold block">Skills Detected in Your Resume:</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {analysisResult.extractedSkills.map(sk => (
                   <div key={sk.skillId} className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">

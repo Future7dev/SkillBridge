@@ -218,7 +218,7 @@ export default function RecruiterDashboard({
             <span>Recruiter Candidate Management & Applicant Tracking</span>
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Manage job postings, review student applications stored in MySQL, and update recruitment stages.
+            Manage job postings, review student applications, and update recruitment stages.
           </p>
         </div>
 
@@ -274,7 +274,7 @@ export default function RecruiterDashboard({
               <span>Job Applicants & Candidates ({filteredApplicants.length} Submissions)</span>
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Review student applications fetched directly from MySQL database.
+              Review all student applications for your job postings.
             </p>
           </div>
 
@@ -404,7 +404,7 @@ export default function RecruiterDashboard({
               </div>
               <div>
                 <h2 className="text-xl font-bold text-white">Publish New Job / Internship Posting</h2>
-                <p className="text-xs text-slate-400">Newly posted jobs are saved directly to MySQL DB and published to all students.</p>
+                <p className="text-xs text-slate-400">Newly posted jobs will be published and visible to all students immediately.</p>
               </div>
             </div>
             
