@@ -87,7 +87,6 @@ export const CANONICAL_SKILLS = [
 ];
 
 // Prerequisite Skill Dependency Graph
-// Key = Target Skill ID, Value = Array of Prerequisite Skill IDs
 export const SKILL_DEPENDENCIES = {
   aspnet_core: ["csharp"],
   ef_core: ["csharp", "aspnet_core", "sql_server"],
@@ -150,7 +149,7 @@ export const INITIAL_JOBS = [
   }
 ];
 
-// Initial Student Profile matching PDF document example
+// Initial Student Profile
 export const INITIAL_STUDENT = {
   id: "student-alex",
   name: "Alex Rivera",
@@ -163,20 +162,12 @@ export const INITIAL_STUDENT = {
 Email: alex.rivera@university.edu | Phone: (555) 019-2831
 
 Summary:
-Computer Science student with strong proficiency in object-oriented programming in C# and web API development using ASP.NET Core. Built multiple university projects using SQL Server databases and basic Docker containers. Passionate about cloud architectures and backend engineering.
+Computer Science student with strong proficiency in object-oriented programming in C# and web API development using ASP.NET Core. Built multiple university projects using SQL Server databases and basic Docker containers.
 
 Technical Skills:
 Languages & Frameworks: C#, ASP.NET Core, SQL Server, JavaScript, Python, HTML/CSS
-Tools & Platforms: Docker, Git, Visual Studio, SQL Server Management Studio
+Tools & Platforms: Docker, Git, Visual Studio, SQL Server Management Studio`,
 
-Projects:
-1. Student Portal Web API: Developed RESTful endpoints using C# and ASP.NET Core 8. Connected to Microsoft SQL Server database using raw ADO.NET and parameterized stored procedures.
-2. Containerized Microservice Demo: Configured Docker container for ASP.NET Web API and exposed endpoints for testing.
-
-Education:
-B.S. in Computer Science - State Institute of Technology (3.8 GPA)`,
-  
-  // Student self-assessment & verified project evidence
   skills: [
     { skillId: "csharp", selfAssessment: 4, projectBonus: 0, notes: "Completed 3 projects in C#" },
     { skillId: "aspnet_core", selfAssessment: 4, projectBonus: 0, notes: "Built REST API for portal" },
@@ -194,17 +185,7 @@ B.S. in Computer Science - State Institute of Technology (3.8 GPA)`,
       title: "Student Portal REST API",
       tech: ["C#", "ASP.NET Core", "SQL Server"],
       description: "Designed multi-tier backend with JWT authentication and role-based access control."
-    },
-    {
-      id: "proj-2",
-      title: "Dockerized Service",
-      tech: ["Docker", "ASP.NET Core"],
-      description: "Containerized C# Web API microservice using Dockerfile and docker-compose."
     }
-  ],
-
-  certifications: [
-    { name: "Foundational C# Certification", issuer: "Microsoft / FreeCodeCamp", year: 2025 }
   ]
 };
 
@@ -222,22 +203,246 @@ export const INITIAL_APPLICATIONS = [
   }
 ];
 
-// Curated Learning Resources for missing skills
+// Curated YouTube Videos & Learning Resources for EVERY Topic
 export const LEARNING_RESOURCES = {
-  ef_core: [
-    { title: "Entity Framework Core Fundamentals", type: "Microsoft Learn", duration: "4 Hours", level: "Intermediate", url: "https://learn.microsoft.com/en-us/ef/core/" },
-    { title: "Building Data Models with EF Core & C#", type: "Video Course", duration: "3.5 Hours", level: "Intermediate", url: "#" }
+  csharp: [
+    {
+      title: "C# Full Course for Beginners - FreeCodeCamp",
+      channel: "freeCodeCamp.org",
+      type: "YouTube Video",
+      duration: "4 Hours 30 Mins",
+      level: "Beginner to Intermediate",
+      url: "https://www.youtube.com/watch?v=gfkTfcpWqAY",
+      embedId: "gfkTfcpWqAY"
+    },
+    {
+      title: "C# Tutorial for Beginners - Programming with Mosh",
+      channel: "Programming with Mosh",
+      type: "YouTube Video",
+      duration: "1 Hour 20 Mins",
+      level: "Beginner",
+      url: "https://www.youtube.com/watch?v=vLnKLF5vibI",
+      embedId: "vLnKLF5vibI"
+    }
+  ],
+  aspnet_core: [
+    {
+      title: "ASP.NET Core Web API Full Course for Beginners - Tim Corey",
+      channel: "IAmTimCorey",
+      type: "YouTube Video",
+      duration: "3 Hours 45 Mins",
+      level: "Intermediate",
+      url: "https://www.youtube.com/watch?v=BfEjDD8mWYg",
+      embedId: "BfEjDD8mWYg"
+    },
+    {
+      title: "ASP.NET Core REST API Tutorial from Scratch",
+      channel: "freeCodeCamp.org",
+      type: "YouTube Video",
+      duration: "5 Hours 10 Mins",
+      level: "Intermediate",
+      url: "https://www.youtube.com/watch?v=c-w_A59W2yI",
+      embedId: "c-w_A59W2yI"
+    }
   ],
   sql_server: [
-    { title: "Advanced SQL Queries & Indexing", type: "Interactive Practice", duration: "5 Hours", level: "Intermediate", url: "#" },
-    { title: "Database Normalization & Stored Procedures", type: "Documentation", duration: "2 Hours", level: "Basic", url: "#" }
+    {
+      title: "Microsoft SQL Server Tutorial for Beginners",
+      channel: "Kudvenkat / Programming with Mosh",
+      type: "YouTube Video",
+      duration: "1 Hour 15 Mins",
+      level: "Beginner",
+      url: "https://www.youtube.com/watch?v=7S_tz1z_5bA",
+      embedId: "7S_tz1z_5bA"
+    },
+    {
+      title: "SQL Database Design & Queries Full Course",
+      channel: "freeCodeCamp.org",
+      type: "YouTube Video",
+      duration: "4 Hours",
+      level: "Intermediate",
+      url: "https://www.youtube.com/watch?v=HXV3zeQKqGY",
+      embedId: "HXV3zeQKqGY"
+    }
+  ],
+  ef_core: [
+    {
+      title: "Entity Framework Core Full Course for Beginners",
+      channel: "Les Jackson",
+      type: "YouTube Video",
+      duration: "3 Hours 20 Mins",
+      level: "Intermediate",
+      url: "https://www.youtube.com/watch?v=d7J_4N4cW44",
+      embedId: "d7J_4N4cW44"
+    },
+    {
+      title: "EF Core Deep Dive: DbContext, Migrations & LINQ Queries",
+      channel: "IAmTimCorey",
+      type: "YouTube Video",
+      duration: "2 Hours 40 Mins",
+      level: "Advanced",
+      url: "https://www.youtube.com/watch?v=S38h32n7hJ4",
+      embedId: "S38h32n7hJ4"
+    }
   ],
   docker: [
-    { title: "Docker & Containerization for .NET Developers", type: "Workshop", duration: "4 Hours", level: "Beginner-Intermediate", url: "#" },
-    { title: "Writing Production Dockerfiles", type: "Tutorial", duration: "1.5 Hours", level: "Intermediate", url: "#" }
+    {
+      title: "Docker Tutorial for Beginners (Full Course)",
+      channel: "TechWorld with Nana",
+      type: "YouTube Video",
+      duration: "2 Hours 45 Mins",
+      level: "Beginner",
+      url: "https://www.youtube.com/watch?v=3c-iBn73dDE",
+      embedId: "3c-iBn73dDE"
+    },
+    {
+      title: "Dockerizing ASP.NET Core & SQL Server Microservices",
+      channel: "Nick Chapsas",
+      type: "YouTube Video",
+      duration: "45 Mins",
+      level: "Intermediate",
+      url: "https://www.youtube.com/watch?v=fqMOX6JJhGo",
+      embedId: "fqMOX6JJhGo"
+    }
   ],
   azure: [
-    { title: "AZ-900: Azure Fundamentals Overview", type: "Certification Guide", duration: "8 Hours", level: "Beginner", url: "#" },
-    { title: "Deploying ASP.NET Core to Azure App Service", type: "Hands-on Lab", duration: "2 Hours", level: "Intermediate", url: "#" }
+    {
+      title: "Microsoft Azure Fundamentals AZ-900 Full Course",
+      channel: "freeCodeCamp.org",
+      type: "YouTube Video",
+      duration: "3 Hours 15 Mins",
+      level: "Beginner",
+      url: "https://www.youtube.com/watch?v=NKEFWyqJ5XA",
+      embedId: "NKEFWyqJ5XA"
+    },
+    {
+      title: "Deploying ASP.NET Core Web API to Azure App Service",
+      channel: "Julio Casal",
+      type: "YouTube Video",
+      duration: "1 Hour 10 Mins",
+      level: "Intermediate",
+      url: "https://www.youtube.com/watch?v=3g83uE_hIvg",
+      embedId: "3g83uE_hIvg"
+    }
+  ],
+  react: [
+    {
+      title: "React JS Full Course 2026 - Beginners to Advanced",
+      channel: "freeCodeCamp.org",
+      type: "YouTube Video",
+      duration: "12 Hours",
+      level: "Beginner to Advanced",
+      url: "https://www.youtube.com/watch?v=bMknfKXIFA8",
+      embedId: "bMknfKXIFA8"
+    },
+    {
+      title: "React Hooks & State Management Crash Course",
+      channel: "Traversy Media",
+      type: "YouTube Video",
+      duration: "1 Hour 45 Mins",
+      level: "Intermediate",
+      url: "https://www.youtube.com/watch?v=w7ejDZ8SWv8",
+      embedId: "w7ejDZ8SWv8"
+    }
+  ],
+  javascript: [
+    {
+      title: "JavaScript Tutorial for Beginners - Full Course",
+      channel: "Programming with Mosh",
+      type: "YouTube Video",
+      duration: "1 Hour 40 Mins",
+      level: "Beginner",
+      url: "https://www.youtube.com/watch?v=W6NZfCO5SIk",
+      embedId: "W6NZfCO5SIk"
+    },
+    {
+      title: "Modern JavaScript ES6+ & Async Async/Await Course",
+      channel: "freeCodeCamp.org",
+      type: "YouTube Video",
+      duration: "3 Hours 20 Mins",
+      level: "Intermediate",
+      url: "https://www.youtube.com/watch?v=PkZNo7MFNFg",
+      embedId: "PkZNo7MFNFg"
+    }
+  ],
+  typescript: [
+    {
+      title: "TypeScript Course for Beginners - Learn TypeScript",
+      channel: "freeCodeCamp.org",
+      type: "YouTube Video",
+      duration: "5 Hours",
+      level: "Beginner to Intermediate",
+      url: "https://www.youtube.com/watch?v=d56mG7DezGs",
+      embedId: "d56mG7DezGs"
+    },
+    {
+      title: "TypeScript Tutorial for Beginners",
+      channel: "Programming with Mosh",
+      type: "YouTube Video",
+      duration: "1 Hour",
+      level: "Beginner",
+      url: "https://www.youtube.com/watch?v=BwuLxPH8IDs",
+      embedId: "BwuLxPH8IDs"
+    }
+  ],
+  python: [
+    {
+      title: "Python for Beginners - Full Course",
+      channel: "Programming with Mosh",
+      type: "YouTube Video",
+      duration: "6 Hours",
+      level: "Beginner",
+      url: "https://www.youtube.com/watch?v=_uQrJ0TkZlc",
+      embedId: "_uQrJ0TkZlc"
+    },
+    {
+      title: "Python Tutorial - Python Full Course for Beginners",
+      channel: "freeCodeCamp.org",
+      type: "YouTube Video",
+      duration: "4 Hours 20 Mins",
+      level: "Beginner",
+      url: "https://www.youtube.com/watch?v=rfscVS0vtbw",
+      embedId: "rfscVS0vtbw"
+    }
+  ],
+  spacy_nlp: [
+    {
+      title: "Natural Language Processing (NLP) with Python & spaCy",
+      channel: "freeCodeCamp.org",
+      type: "YouTube Video",
+      duration: "3 Hours 10 Mins",
+      level: "Intermediate",
+      url: "https://www.youtube.com/watch?v=dIUTsFT2MeQ",
+      embedId: "dIUTsFT2MeQ"
+    },
+    {
+      title: "TF-IDF Vectorization & Text Similarity Tutorial",
+      channel: "StatQuest / Machine Learning Simplified",
+      type: "YouTube Video",
+      duration: "45 Mins",
+      level: "Intermediate",
+      url: "https://www.youtube.com/watch?v=WnGPv6HnBok",
+      embedId: "WnGPv6HnBok"
+    }
+  ],
+  git: [
+    {
+      title: "Git and GitHub Tutorial for Beginners - Full Course",
+      channel: "freeCodeCamp.org",
+      type: "YouTube Video",
+      duration: "1 Hour 10 Mins",
+      level: "Beginner",
+      url: "https://www.youtube.com/watch?v=RGOj5yH7evk",
+      embedId: "RGOj5yH7evk"
+    },
+    {
+      title: "Git Command Line Complete Tutorial",
+      channel: "Corey Schafer",
+      type: "YouTube Video",
+      duration: "45 Mins",
+      level: "Beginner",
+      url: "https://www.youtube.com/watch?v=HVsySz-h9r4",
+      embedId: "HVsySz-h9r4"
+    }
   ]
 };

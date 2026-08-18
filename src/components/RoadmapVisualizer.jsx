@@ -9,7 +9,10 @@ import {
   Info,
   Clock,
   Layers,
-  Award
+  Award,
+  Youtube,
+  Play,
+  X
 } from 'lucide-react';
 import { generatePersonalizedRoadmap } from '../services/matchingEngine';
 import { LEARNING_RESOURCES } from '../data/skillsData';
@@ -23,8 +26,9 @@ export default function RoadmapVisualizer({
   const activeJob = selectedJobForRoadmap || jobs[0];
   const roadmapData = generatePersonalizedRoadmap(student, activeJob);
   const [completedSteps, setCompletedSteps] = useState(new Set());
+  const [activeVideoModal, setActiveVideoModal] = useState(null);
 
-  // Mark step complete handler (updates student skill assessment in live state)
+  // Mark step complete handler
   const toggleStepComplete = (skillId, targetLevel) => {
     setCompletedSteps(prev => {
       const next = new Set(prev);
@@ -33,7 +37,6 @@ export default function RoadmapVisualizer({
       return next;
     });
 
-    // Optionally update student profile level
     setStudent(prev => {
       const updated = prev.skills.map(s => {
         if (s.skillId === skillId) {
@@ -55,14 +58,14 @@ export default function RoadmapVisualizer({
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
               Prerequisite Graph Engine
             </span>
-            <span className="text-xs text-slate-400 font-medium">Target: {activeJob.title}</span>
+            <span className="text-xs text-slate-400 font-medium">Target: {activeJob.title || activeJob.jobTitle}</span>
           </div>
           <h1 className="text-2xl font-black text-white mt-1 flex items-center space-x-3">
             <GitFork className="w-6 h-6 text-indigo-400" />
-            <span>Personalized Learning Roadmap</span>
+            <span>Personalized Learning Roadmap & YouTube Video Tutorials</span>
           </h1>
           <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-            Prerequisites are ordered automatically using skill dependency graphs (e.g. C# → ASP.NET Core → Entity Framework → Docker → Azure).
+            Prerequisites are ordered automatically using skill dependency graphs with curated YouTube video courses for every topic.
           </p>
         </div>
 
@@ -105,14 +108,24 @@ export default function RoadmapVisualizer({
           </div>
           <h2 className="text-xl font-bold text-white">All Prerequisites & Gaps Satisfied!</h2>
           <p className="text-sm text-slate-400 max-w-md mx-auto">
-            Your current effective proficiencies meet or exceed all requirements for {activeJob.title}.
+            Your current effective proficiencies meet or exceed all requirements for {activeJob.title || activeJob.jobTitle}.
           </p>
         </div>
       ) : (
         <div className="space-y-6 relative before:absolute before:left-6 sm:before:left-8 before:top-4 before:bottom-4 before:w-0.5 before:bg-slate-800">
           {roadmapData.roadmap.map((step, index) => {
             const isDone = completedSteps.has(step.skillId);
-            const resources = LEARNING_RESOURCES[step.skillId] || [];
+            const resources = LEARNING_RESOURCES[step.skillId] || [
+              {
+                title: `${step.skillName} Full Tutorial for Beginners`,
+                channel: "YouTube Learning",
+                type: "YouTube Video",
+                duration: "2 Hours",
+                level: "Beginner to Intermediate",
+                url: `https://www.youtube.com/results?search_query=${encodeURIComponent(step.skillName + ' tutorial full course')}`,
+                embedId: null
+              }
+            ];
 
             return (
               <div 
@@ -131,7 +144,7 @@ export default function RoadmapVisualizer({
                 </div>
 
                 {/* Step Card Content */}
-                <div className={`glass-panel p-6 rounded-2xl border space-y-4 transition-all ${
+                <div className={`glass-panel p-6 rounded-2xl border space-y-5 transition-all ${
                   isDone ? 'border-emerald-500/30 bg-emerald-950/10' : 'border-indigo-500/20'
                 }`}>
                   
@@ -162,55 +175,124 @@ export default function RoadmapVisualizer({
                   </div>
 
                   {/* Reason & Prerequisite info */}
-                  <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-300 space-y-1">
+                  <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-300 space-y-1">
                     <p><strong className="text-indigo-400">Why Recommended:</strong> {step.reason}</p>
                     {step.prerequisites.length > 0 && (
                       <p><strong className="text-slate-400">Prerequisites:</strong> {step.prerequisites.join(', ')}</p>
                     )}
                   </div>
 
-                  {/* Curated Learning Resources */}
-                  {resources.length > 0 && (
-                    <div className="space-y-3 pt-2">
-                      <span className="text-xs font-bold text-slate-300 flex items-center space-x-1.5">
-                        <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>Recommended Curated Learning Modules</span>
+                  {/* 🎥 YOUTUBE VIDEO COURSES SECTION FOR EVERY TOPIC */}
+                  <div className="space-y-3 pt-3 border-t border-slate-800/80">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-200 flex items-center space-x-2">
+                        <Youtube className="w-4 h-4 text-red-500 fill-red-500/20" />
+                        <span>Recommended YouTube Video Courses & Tutorials ({step.skillName})</span>
                       </span>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {resources.map((res, rIdx) => (
-                          <a
-                            key={rIdx}
-                            href={res.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-indigo-500/40 transition-all flex items-center justify-between text-xs group"
-                          >
-                            <div className="space-y-1">
-                              <span className="font-semibold text-slate-200 group-hover:text-indigo-300 block">
-                                {res.title}
-                              </span>
-                              <div className="flex items-center space-x-2 text-[10px] text-slate-400">
-                                <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 font-mono">
-                                  {res.type}
-                                </span>
-                                <span className="flex items-center space-x-1">
-                                  <Clock className="w-3 h-3" />
-                                  <span>{res.duration}</span>
-                                </span>
-                              </div>
-                            </div>
-                            <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400" />
-                          </a>
-                        ))}
-                      </div>
                     </div>
-                  )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {resources.map((res, rIdx) => (
+                        <div
+                          key={rIdx}
+                          className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-red-500/40 transition-all flex flex-col justify-between text-xs space-y-3 group"
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-400 font-extrabold text-[10px] border border-red-500/20 flex items-center space-x-1">
+                                <Youtube className="w-3 h-3 text-red-500" />
+                                <span>{res.channel || 'YouTube Video'}</span>
+                              </span>
+                              <span className="text-[10px] text-slate-400 flex items-center space-x-1 font-mono">
+                                <Clock className="w-3 h-3 text-slate-500" />
+                                <span>{res.duration}</span>
+                              </span>
+                            </div>
+
+                            <h4 className="font-bold text-white group-hover:text-red-300 transition-colors leading-snug">
+                              {res.title}
+                            </h4>
+                          </div>
+
+                          <div className="flex items-center space-x-2 pt-1">
+                            {/* Watch Direct Link */}
+                            <a
+                              href={res.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 px-3 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/30 text-[11px] font-bold transition-all flex items-center justify-center space-x-1"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>Watch on YouTube</span>
+                            </a>
+
+                            {/* Optional Embedded Video Preview Modal trigger */}
+                            {res.embedId && (
+                              <button
+                                onClick={() => setActiveVideoModal(res)}
+                                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-semibold transition-all flex items-center space-x-1"
+                                title="Play Video Inside SkillBridge"
+                              >
+                                <Play className="w-3 h-3 text-red-400 fill-red-400" />
+                                <span>Preview</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* EMBEDDED YOUTUBE VIDEO PLAYER MODAL */}
+      {activeVideoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+          <div className="glass-panel w-full max-w-4xl rounded-2xl border border-red-500/30 p-6 space-y-4 relative shadow-2xl">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-2">
+                <Youtube className="w-5 h-5 text-red-500 fill-red-500" />
+                <h3 className="text-base font-bold text-white">{activeVideoModal.title}</h3>
+              </div>
+
+              <button 
+                onClick={() => setActiveVideoModal(null)}
+                className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="aspect-video w-full rounded-xl overflow-hidden bg-black border border-slate-800">
+              <iframe
+                className="w-full h-full"
+                src={`https://www.youtube.com/embed/${activeVideoModal.embedId}?autoplay=1`}
+                title={activeVideoModal.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
+              <span>Channel: <strong className="text-white">{activeVideoModal.channel}</strong></span>
+              <a 
+                href={activeVideoModal.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-red-400 font-bold hover:underline flex items-center space-x-1"
+              >
+                <span>Open in YouTube Tab</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+
+          </div>
         </div>
       )}
 
