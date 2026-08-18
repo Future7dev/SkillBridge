@@ -12,6 +12,28 @@ export function getAuthHeaders() {
 }
 
 /**
+ * Fetch Jobs API
+ */
+export async function fetchJobs() {
+  const res = await fetch(`${API_BASE_URL}/jobs`);
+  if (!res.ok) throw new Error('Failed to fetch job postings from backend API.');
+  return await res.json();
+}
+
+/**
+ * Create Job Posting API
+ */
+export async function createJobPosting(jobData) {
+  const res = await fetch(`${API_BASE_URL}/jobs`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(jobData)
+  });
+  if (!res.ok) throw new Error('Failed to post job to backend API.');
+  return await res.json();
+}
+
+/**
  * Universal Login API - STRICT VALIDATION (No Mock Login Fallback for non-existent users)
  */
 export async function loginUser(email, password, role) {

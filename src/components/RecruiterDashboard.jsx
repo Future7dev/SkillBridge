@@ -19,6 +19,7 @@ import {
 import { CANONICAL_SKILLS } from '../data/skillsData';
 import { calculateJobMatch } from '../services/matchingEngine';
 import { calculateTfidfCosineSimilarity } from '../services/nlpEngine';
+import { createJobPosting } from '../services/api';
 
 export default function RecruiterDashboard({ 
   jobs, 
@@ -71,7 +72,7 @@ export default function RecruiterDashboard({
   };
 
   // Submit New Job Handler (Visibly publishes to all students)
-  const handleCreateJob = (e) => {
+  const handleCreateJob = async (e) => {
     e.preventDefault();
     if (!newTitle.trim() || jobSkillReqs.length === 0) return;
 
@@ -80,18 +81,35 @@ export default function RecruiterDashboard({
       id: newJobId,
       jobId: newJobId,
       title: newTitle,
+      jobTitle: newTitle,
       company: newCompany,
+      companyName: newCompany,
       location: newLocation,
       type: newType,
+      employmentType: newType,
       postedDate: new Date().toISOString().split('T')[0],
       description: newDesc,
-      skillsRequired: jobSkillReqs
+      skillsRequired: jobSkillReqs,
+      jobSkills: jobSkillReqs
     };
 
-    // Update global jobs list so all students see it immediately
+    // 1. Immediately update local React state so all students see it in JobExplorer right away
     setJobs(prev => [publishedJob, ...prev]);
     setSelectedJobId(newJobId);
     setShowCreateModal(false);
+
+    // 2. Try persisting to MySQL backend API
+    try {
+      await createJobPosting({
+        jobTitle: newTitle,
+        companyName: newCompany,
+        location: newLocation,
+        employmentType: newType,
+        description: newDesc
+      });
+    } catch (err) {
+      console.warn("Saved job to state; MySQL sync fallback note:", err);
+    }
 
     // Reset Form
     setNewTitle('');
@@ -161,7 +179,7 @@ export default function RecruiterDashboard({
           >
             {jobs.map(j => (
               <option key={j.id || j.jobId} value={j.id || j.jobId}>
-                {j.title} ({j.company})
+                {j.title || j.jobTitle} ({j.company || j.companyName})
               </option>
             ))}
           </select>
@@ -172,7 +190,7 @@ export default function RecruiterDashboard({
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center space-x-2">
               <UserCheck className="w-4 h-4 text-emerald-400" />
-              <span>Candidates Who Applied for "{activeJob?.title}" ({jobApplicants.length})</span>
+              <span>Candidates Who Applied for "{activeJob?.title || activeJob?.jobTitle}" ({jobApplicants.length})</span>
             </h3>
           </div>
 

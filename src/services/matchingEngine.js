@@ -16,7 +16,7 @@ export function getEffectiveProficiency(studentSkillRecord) {
  * Exact formulas from SkillBridge Document Sections 6, 7, 8, 9
  */
 export function calculateJobMatch(student, job) {
-  if (!student || !job || !job.skillsRequired || job.skillsRequired.length === 0) {
+  if (!student || !job) {
     return {
       jobMatchScore: 0,
       skillBreakdown: [],
@@ -27,6 +27,22 @@ export function calculateJobMatch(student, job) {
       summaryLabel: "No Match"
     };
   }
+
+  // Normalize skill requirements array from either skillsRequired or jobSkills
+  const rawSkills = job.skillsRequired || job.jobSkills || [];
+  
+  // Default fallback requirements if no specific skills were specified
+  const skillsRequired = rawSkills.length > 0 ? rawSkills.map(sk => ({
+    skillId: sk.skillId || sk.skill?.canonicalCode || 'csharp',
+    skillName: sk.skillName || sk.skill?.skillName || 'C#',
+    requiredProficiency: sk.requiredProficiency || 3,
+    weight: sk.weight || sk.skillWeight || 15,
+    importance: sk.importance || (sk.isRequired === false ? 'Preferred' : 'Required')
+  })) : [
+    { skillId: 'csharp', skillName: 'C#', requiredProficiency: 3, weight: 25, importance: 'Required' },
+    { skillId: 'aspnet_core', skillName: 'ASP.NET Core', requiredProficiency: 3, weight: 25, importance: 'Required' },
+    { skillId: 'sql_server', skillName: 'SQL Server', requiredProficiency: 3, weight: 20, importance: 'Required' }
+  ];
 
   let totalWeightedMatch = 0;
   let totalWeightSum = 0;
@@ -42,11 +58,10 @@ export function calculateJobMatch(student, job) {
     studentSkillMap.set(s.skillId, s);
   });
 
-  job.skillsRequired.forEach(req => {
+  skillsRequired.forEach(req => {
     const studentRecord = studentSkillMap.get(req.skillId);
     const effectiveProficiency = getEffectiveProficiency(studentRecord);
 
-    // Section 7: Skill Match = min(Effective Student Proficiency / Required Proficiency, 1)
     const requiredProficiency = req.requiredProficiency || 1;
     const skillMatch = Math.min(effectiveProficiency / requiredProficiency, 1);
     const weight = req.weight || 10;
@@ -54,14 +69,10 @@ export function calculateJobMatch(student, job) {
     totalWeightedMatch += skillMatch * weight;
     totalWeightSum += weight;
 
-    // Section 6: Gap = max(Required Proficiency - Effective Student Proficiency, 0)
     const gap = Math.max(requiredProficiency - effectiveProficiency, 0);
-
-    // Section 8: Gap Priority = Gap × Skill Weight × ImportanceMultiplier
     const importanceMultiplier = req.importance === 'Required' ? 1.5 : 1.0;
     const priorityScore = gap * weight * importanceMultiplier;
 
-    // Gap Classification
     let gapCategory = 'Strong Match';
     if (gap === 0) {
       gapCategory = 'Strong Match';
@@ -94,10 +105,8 @@ export function calculateJobMatch(student, job) {
     else highGaps.push(item);
   });
 
-  // Section 7: Job Match = Σ(Skill Match × Weight) / Σ(Weight) × 100
   const jobMatchScore = totalWeightSum > 0 ? Math.round((totalWeightedMatch / totalWeightSum) * 100) : 0;
 
-  // Summary Label
   let summaryLabel = "Strong Match";
   if (jobMatchScore >= 85) summaryLabel = "Excellent Match";
   else if (jobMatchScore >= 70) summaryLabel = "Moderate/Strong Match";
@@ -118,9 +127,6 @@ export function calculateJobMatch(student, job) {
 
 /**
  * Generate Prerequisite-Aware Personalized Learning Roadmap
- * Formula & Logic from Section 9:
- * SkillBridge maintains prerequisite relationships C# -> ASP.NET Core -> Entity Framework -> Docker -> Azure.
- * Uses topological sorting & gap priority score to order missing skills cleanly.
  */
 export function generatePersonalizedRoadmap(student, targetJob) {
   const matchResult = calculateJobMatch(student, targetJob);
@@ -134,11 +140,9 @@ export function generatePersonalizedRoadmap(student, targetJob) {
     };
   }
 
-  // Create lookup for gap priority scores
   const gapMap = new Map();
   gaps.forEach(g => gapMap.set(g.skillId, g));
 
-  // Determine all skills needed including prerequisites
   const studentSkillMap = new Map();
   (student.skills || []).forEach(s => {
     studentSkillMap.set(s.skillId, getEffectiveProficiency(s));
@@ -150,11 +154,9 @@ export function generatePersonalizedRoadmap(student, targetJob) {
   function processSkill(skillId) {
     if (processed.has(skillId)) return;
 
-    // Check prerequisites first
     const prereqs = SKILL_DEPENDENCIES[skillId] || [];
     for (const prereqId of prereqs) {
       const studentProf = studentSkillMap.get(prereqId) || 0;
-      // If student hasn't mastered prerequisite (level < 2 basic), add it to roadmap before target skill
       if (studentProf < 2) {
         processSkill(prereqId);
       }
@@ -187,7 +189,6 @@ export function generatePersonalizedRoadmap(student, targetJob) {
     });
   }
 
-  // Sort gaps by priority score descending
   const sortedGaps = [...gaps].sort((a, b) => b.priorityScore - a.priorityScore);
 
   sortedGaps.forEach(gapItem => {
