@@ -6,20 +6,60 @@ import {
   AlertCircle, 
   Briefcase, 
   Layers,
-  ChevronRight
+  ChevronRight,
+  LogOut,
+  Trash2
 } from 'lucide-react';
+import { updateApplicationStatusApi, deleteApplicationApi } from '../services/api';
 
 const STAGES = ["Applied", "Under Review", "Interview", "Offer"];
 
-export default function ApplicationTracker({ applications, setApplications }) {
+export default function ApplicationTracker({ 
+  applications, 
+  setApplications,
+  refreshApplicationsFromDatabase
+}) {
   
-  const updateStage = (appId, newStatus) => {
-    setApplications(prev => prev.map(a => {
-      if (a.id === appId) {
-        return { ...a, status: newStatus };
+  const updateStage = async (appId, newStatus) => {
+    setApplications(prev => {
+      const updated = prev.map(a => {
+        if (a.id === appId) {
+          return { ...a, status: newStatus };
+        }
+        return a;
+      });
+      localStorage.setItem('skillbridge_apps', JSON.stringify(updated));
+      return updated;
+    });
+
+    if (!isNaN(appId)) {
+      try {
+        await updateApplicationStatusApi(appId, newStatus, `Stage updated to ${newStatus}`);
+        if (refreshApplicationsFromDatabase) await refreshApplicationsFromDatabase();
+      } catch (err) {
+        console.warn("MySQL application update note:", err);
       }
-      return a;
-    }));
+    }
+  };
+
+  // Student Opt Out / Withdraw Application Handler (Deletes from MySQL DB)
+  const handleOptOutApplication = async (appId) => {
+    if (!window.confirm("Are you sure you want to withdraw / opt out of this job application?")) return;
+
+    setApplications(prev => {
+      const updated = prev.filter(a => a.id !== appId);
+      localStorage.setItem('skillbridge_apps', JSON.stringify(updated));
+      return updated;
+    });
+
+    if (!isNaN(appId)) {
+      try {
+        await deleteApplicationApi(appId);
+        if (refreshApplicationsFromDatabase) await refreshApplicationsFromDatabase();
+      } catch (err) {
+        console.warn("MySQL application delete note:", err);
+      }
+    }
   };
 
   return (
@@ -33,7 +73,7 @@ export default function ApplicationTracker({ applications, setApplications }) {
             <span>Student Application Tracker</span>
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Track recruitment stage progress, interview status, and explainable TF-IDF screening results.
+            Track recruitment stage progress, interview status, or withdraw/opt out of applications stored in MySQL.
           </p>
         </div>
       </div>
@@ -65,23 +105,21 @@ export default function ApplicationTracker({ applications, setApplications }) {
                     <p className="text-xs text-slate-400 mt-0.5">Applied on {app.appliedDate}</p>
                   </div>
 
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-3">
                     <div className="text-right">
                       <span className="text-xs text-slate-400 block font-medium">Match Score</span>
                       <span className="text-2xl font-black text-indigo-400">{app.matchScore}%</span>
                     </div>
 
-                    {/* Stage selector toggle */}
-                    <select
-                      value={app.status}
-                      onChange={(e) => updateStage(app.id, e.target.value)}
-                      className="bg-slate-900 border border-slate-700 text-white text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500"
+                    {/* Student Opt Out / Withdraw Application Button */}
+                    <button
+                      onClick={() => handleOptOutApplication(app.id)}
+                      className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20 text-xs font-semibold transition-all"
+                      title="Opt Out / Withdraw Application"
                     >
-                      {STAGES.map(stg => (
-                        <option key={stg} value={stg}>{stg}</option>
-                      ))}
-                      <option value="Rejected">Rejected</option>
-                    </select>
+                      <LogOut className="w-4 h-4" />
+                      <span>Opt Out / Withdraw</span>
+                    </button>
                   </div>
                 </div>
 

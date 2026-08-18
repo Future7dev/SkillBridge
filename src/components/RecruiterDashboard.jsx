@@ -14,21 +14,25 @@ import {
   UserCheck,
   Building,
   Check,
-  X
+  X,
+  Filter,
+  UserMinus
 } from 'lucide-react';
 import { CANONICAL_SKILLS } from '../data/skillsData';
 import { calculateJobMatch } from '../services/matchingEngine';
 import { calculateTfidfCosineSimilarity } from '../services/nlpEngine';
-import { createJobPosting } from '../services/api';
+import { createJobPosting, deleteJobPosting, updateApplicationStatusApi, deleteApplicationApi } from '../services/api';
 
 export default function RecruiterDashboard({ 
   jobs, 
   setJobs, 
   student, 
   applications,
-  setApplications
+  setApplications,
+  refreshJobsFromDatabase,
+  refreshApplicationsFromDatabase
 }) {
-  const [selectedJobId, setSelectedJobId] = useState(jobs[0]?.id || jobs[0]?.jobId || '');
+  const [selectedJobId, setSelectedJobId] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // New Job Creation Form State
@@ -46,10 +50,83 @@ export default function RecruiterDashboard({
   ]);
   const [addingSkillId, setAddingSkillId] = useState(CANONICAL_SKILLS[0].id);
 
-  const activeJob = jobs.find(j => (j.id || j.jobId) === selectedJobId) || jobs[0];
+  const activeJob = jobs.find(j => String(j.id || j.jobId) === String(selectedJobId));
 
-  // Applications filtered for the selected job posting
-  const jobApplicants = applications.filter(a => (a.jobId === activeJob?.id || a.jobId === activeJob?.jobId));
+  // Applications filtering: If 'all' is selected or job matches, show candidate applications
+  const filteredApplicants = applications.filter(a => {
+    if (selectedJobId === 'all' || !selectedJobId) return true;
+    if (!activeJob) return true;
+    const aId = String(a.jobId || '');
+    const targetId1 = String(activeJob.id || '');
+    const targetId2 = String(activeJob.jobId || '');
+    return aId === targetId1 || aId === targetId2 || a.jobTitle === (activeJob.title || activeJob.jobTitle);
+  });
+
+  // Remove / Delete Job Opening Handler
+  const handleDeleteJobOpening = async (targetJobId) => {
+    if (!window.confirm("Are you sure you want to remove and close this job opening?")) return;
+
+    const updatedJobs = jobs.filter(j => String(j.id || j.jobId) !== String(targetJobId));
+    setJobs(updatedJobs);
+    localStorage.setItem('skillbridge_jobs', JSON.stringify(updatedJobs));
+
+    if (selectedJobId === targetJobId) {
+      setSelectedJobId('all');
+    }
+
+    try {
+      if (!isNaN(targetJobId)) {
+        await deleteJobPosting(targetJobId);
+      }
+    } catch (err) {
+      console.warn("Backend job delete note:", err);
+    }
+  };
+
+  // Reject candidate handler (Deletes application from MySQL DB & state)
+  const handleRejectCandidate = async (appId) => {
+    setApplications(prev => {
+      const updated = prev.filter(app => app.id !== appId);
+      localStorage.setItem('skillbridge_apps', JSON.stringify(updated));
+      return updated;
+    });
+
+    if (!isNaN(appId)) {
+      try {
+        await deleteApplicationApi(appId);
+        if (refreshApplicationsFromDatabase) await refreshApplicationsFromDatabase();
+      } catch (err) {
+        console.warn("MySQL DB delete application note:", err);
+      }
+    }
+  };
+
+  // Update applicant stage status (Shortlist, Interview, Offer in MySQL DB & state)
+  const handleUpdateApplicantStatus = async (appId, newStatus) => {
+    setApplications(prev => {
+      const updated = prev.map(app => {
+        if (app.id === appId) {
+          return {
+            ...app,
+            status: newStatus,
+            stageNotes: `Stage updated to ${newStatus} by Recruiter on ${new Date().toISOString().split('T')[0]}`
+          };
+        }
+        return app;
+      });
+      localStorage.setItem('skillbridge_apps', JSON.stringify(updated));
+      return updated;
+    });
+
+    if (!isNaN(appId)) {
+      try {
+        await updateApplicationStatusApi(appId, newStatus, `Stage updated to ${newStatus}`);
+        if (refreshApplicationsFromDatabase) await refreshApplicationsFromDatabase();
+      } catch (err) {
+        console.warn("MySQL DB application status update note:", err);
+      }
+    }
+  };
 
   // Add skill requirement row to new job form
   const handleAddSkillToJob = () => {
@@ -71,7 +148,7 @@ export default function RecruiterDashboard({
     setJobSkillReqs(prev => prev.filter(s => s.skillId !== skId));
   };
 
-  // Submit New Job Handler (Visibly publishes to all students)
+  // Submit New Job Handler
   const handleCreateJob = async (e) => {
     e.preventDefault();
     if (!newTitle.trim() || jobSkillReqs.length === 0) return;
@@ -90,44 +167,39 @@ export default function RecruiterDashboard({
       postedDate: new Date().toISOString().split('T')[0],
       description: newDesc,
       skillsRequired: jobSkillReqs,
-      jobSkills: jobSkillReqs
+      jobSkills: jobSkillReqs,
+      isNew: true
     };
 
-    // 1. Immediately update local React state so all students see it in JobExplorer right away
-    setJobs(prev => [publishedJob, ...prev]);
+    const updatedJobsList = [publishedJob, ...jobs];
+    setJobs(updatedJobsList);
+    localStorage.setItem('skillbridge_jobs', JSON.stringify(updatedJobsList));
+
     setSelectedJobId(newJobId);
     setShowCreateModal(false);
 
-    // 2. Try persisting to MySQL backend API
     try {
       await createJobPosting({
         jobTitle: newTitle,
         companyName: newCompany,
         location: newLocation,
         employmentType: newType,
-        description: newDesc
+        description: newDesc,
+        skills: jobSkillReqs.map(s => ({
+          skillId: s.skillId,
+          skillName: s.skillName,
+          requiredProficiency: s.requiredProficiency,
+          weight: s.weight,
+          importance: s.importance
+        }))
       });
+      if (refreshJobsFromDatabase) await refreshJobsFromDatabase();
     } catch (err) {
-      console.warn("Saved job to state; MySQL sync fallback note:", err);
+      console.warn("MySQL DB save note:", err);
     }
 
-    // Reset Form
     setNewTitle('');
     setNewDesc('');
-  };
-
-  // Update applicant stage status (Shortlist, Interview, Offer, Reject)
-  const handleUpdateApplicantStatus = (appId, newStatus) => {
-    setApplications(prev => prev.map(app => {
-      if (app.id === appId) {
-        return {
-          ...app,
-          status: newStatus,
-          stageNotes: `Stage updated to ${newStatus} by Recruiter on ${new Date().toISOString().split('T')[0]}`
-        };
-      }
-      return app;
-    }));
   };
 
   return (
@@ -143,10 +215,10 @@ export default function RecruiterDashboard({
           </div>
           <h1 className="text-2xl font-black text-white mt-1 flex items-center space-x-3">
             <Users className="w-6 h-6 text-cyan-400" />
-            <span>Recruiter Candidate Management & Job Publisher</span>
+            <span>Recruiter Candidate Management & Applicant Tracking</span>
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Post new internship roles to all students and evaluate candidate applications ranked by fit score and TF-IDF similarity.
+            Manage job postings, review student applications stored in MySQL, and update recruitment stages.
           </p>
         </div>
 
@@ -159,47 +231,78 @@ export default function RecruiterDashboard({
         </button>
       </div>
 
-      {/* Select Job Posting to Filter Candidates */}
+      {/* SECTION 1: MANAGE JOB OPENINGS */}
+      <div className="glass-panel p-6 rounded-2xl space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h2 className="text-base font-bold text-white flex items-center space-x-2">
+            <Briefcase className="w-5 h-5 text-cyan-400" />
+            <span>Active Job Openings ({jobs.length} Positions)</span>
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {jobs.map((j) => {
+            const jId = j.id || j.jobId;
+            return (
+              <div key={jId} className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-bold text-sm text-white">{j.title || j.jobTitle}</h3>
+                  <p className="text-xs text-slate-400">{j.company || j.companyName} • {j.location}</p>
+                  <span className="text-[10px] text-slate-500 font-mono">Posted: {j.postedDate}</span>
+                </div>
+
+                <button
+                  onClick={() => handleDeleteJobOpening(jId)}
+                  className="p-2 rounded-lg bg-rose-600/10 text-rose-400 border border-rose-500/20 hover:bg-rose-600 hover:text-white transition-all text-xs flex items-center space-x-1 font-semibold"
+                  title="Remove Job Opening"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Remove Opening</span>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* SECTION 2: CANDIDATE APPLICANTS LIST */}
       <div className="glass-panel p-6 rounded-2xl space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
           <div>
             <h2 className="text-lg font-bold text-white flex items-center space-x-2">
-              <Briefcase className="w-5 h-5 text-cyan-400" />
-              <span>Select Active Job Posting to Review Applicants</span>
+              <UserCheck className="w-5 h-5 text-cyan-400" />
+              <span>Job Applicants & Candidates ({filteredApplicants.length} Submissions)</span>
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Review student applications submitted for this specific position.
+              Review student applications fetched directly from MySQL database.
             </p>
           </div>
 
-          <select
-            value={selectedJobId}
-            onChange={(e) => setSelectedJobId(e.target.value)}
-            className="bg-slate-900 border border-slate-700 text-white text-xs font-semibold rounded-xl px-4 py-2.5 focus:outline-none focus:border-cyan-500"
-          >
-            {jobs.map(j => (
-              <option key={j.id || j.jobId} value={j.id || j.jobId}>
-                {j.title || j.jobTitle} ({j.company || j.companyName})
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center space-x-2">
+            <Filter className="w-4 h-4 text-slate-400" />
+            <select
+              value={selectedJobId}
+              onChange={(e) => setSelectedJobId(e.target.value)}
+              className="bg-slate-900 border border-slate-700 text-white text-xs font-semibold rounded-xl px-4 py-2.5 focus:outline-none focus:border-cyan-500"
+            >
+              <option value="all">View All Applied Candidates ({applications.length})</option>
+              {jobs.map(j => (
+                <option key={j.id || j.jobId} value={j.id || j.jobId}>
+                  {j.title || j.jobTitle} ({j.company || j.companyName})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {/* SECTION 1: APPLICANTS FOR SELECTED JOB */}
+        {/* APPLICANTS TABLE */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center space-x-2">
-              <UserCheck className="w-4 h-4 text-emerald-400" />
-              <span>Candidates Who Applied for "{activeJob?.title || activeJob?.jobTitle}" ({jobApplicants.length})</span>
-            </h3>
-          </div>
-
-          {jobApplicants.length === 0 ? (
+          {filteredApplicants.length === 0 ? (
             <div className="p-8 rounded-xl bg-slate-950/60 border border-slate-800 text-center space-y-3">
               <Users className="w-10 h-10 text-slate-600 mx-auto" />
-              <h4 className="text-sm font-bold text-slate-300">No Student Applications Submitted Yet</h4>
+              <h4 className="text-sm font-bold text-slate-300">No Applications Submitted for this Filter</h4>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
-                Students can browse and apply to this position from the Job Explorer tab. Below is the potential candidate talent pool benchmark.
+                Students can browse and apply to positions from the Job Explorer tab.
               </p>
             </div>
           ) : (
@@ -207,7 +310,9 @@ export default function RecruiterDashboard({
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-900 text-slate-400 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-800">
                   <tr>
-                    <th className="p-3.5">Candidate</th>
+                    <th className="p-3.5">Candidate Name</th>
+                    <th className="p-3.5">Applied Position</th>
+                    <th className="p-3.5">Degree & Institution</th>
                     <th className="p-3.5">Applied Date</th>
                     <th className="p-3.5 text-center">Fit Score %</th>
                     <th className="p-3.5 text-center">Current Status</th>
@@ -215,11 +320,19 @@ export default function RecruiterDashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
-                  {jobApplicants.map(app => (
+                  {filteredApplicants.map(app => (
                     <tr key={app.id} className="hover:bg-slate-900/40 transition-colors">
                       <td className="p-3.5">
-                        <div className="font-bold text-white text-sm">{app.studentName || student.name}</div>
-                        <span className="text-[11px] text-slate-400">{app.studentEmail || student.email}</span>
+                        <div className="font-bold text-white text-sm">{app.studentName || "Student Applicant"}</div>
+                        <span className="text-[11px] text-slate-400">{app.studentEmail || "student@university.edu"}</span>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="font-bold text-cyan-400">{app.jobTitle}</div>
+                        <span className="text-[10px] text-slate-400">{app.company}</span>
+                      </td>
+                      <td className="p-3.5 text-slate-300">
+                        <div>{app.degree || "B.S. Computer Science"}</div>
+                        <span className="text-[10px] text-slate-400">{app.institution || "State Institute of Technology"}</span>
                       </td>
                       <td className="p-3.5 text-slate-300 font-mono">{app.appliedDate}</td>
                       <td className="p-3.5 text-center font-mono">
@@ -230,7 +343,6 @@ export default function RecruiterDashboard({
                           app.status === 'Offer' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                           app.status === 'Interview' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
                           app.status === 'Shortlisted' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' :
-                          app.status === 'Rejected' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
                           'bg-amber-500/10 text-amber-400 border-amber-500/20'
                         }`}>
                           {app.status}
@@ -256,10 +368,12 @@ export default function RecruiterDashboard({
                           Offer
                         </button>
                         <button
-                          onClick={() => handleUpdateApplicantStatus(app.id, 'Rejected')}
-                          className="px-2 py-1 rounded-lg bg-rose-600/20 text-rose-300 border border-rose-500/30 text-[11px] font-semibold hover:bg-rose-600/30"
+                          onClick={() => handleRejectCandidate(app.id)}
+                          className="px-2 py-1 rounded-lg bg-rose-600/20 text-rose-300 border border-rose-500/30 text-[11px] font-semibold hover:bg-rose-600 hover:text-white flex-inline items-center space-x-1"
+                          title="Reject and Remove Candidate"
                         >
-                          Reject
+                          <UserMinus className="w-3.5 h-3.5 inline mr-1" />
+                          <span>Reject & Remove</span>
                         </button>
                       </td>
                     </tr>
@@ -270,62 +384,9 @@ export default function RecruiterDashboard({
           )}
         </div>
 
-        {/* SECTION 2: CANDIDATE TALENT POOL BENCHMARK */}
-        <div className="space-y-4 pt-4 border-t border-slate-800">
-          <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center space-x-2">
-            <BrainCircuit className="w-4 h-4 text-cyan-400" />
-            <span>All Candidate Profiles & TF-IDF Similarity Benchmark</span>
-          </h3>
-
-          <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-900 text-slate-400 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-800">
-                <tr>
-                  <th className="p-3.5">Candidate Name</th>
-                  <th className="p-3.5">Degree & University</th>
-                  <th className="p-3.5 text-center">Skill Fit Score</th>
-                  <th className="p-3.5 text-center">TF-IDF Similarity</th>
-                  <th className="p-3.5 text-center">Gap Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {(() => {
-                  const matchRes = calculateJobMatch(student, activeJob);
-                  const tfidf = calculateTfidfCosineSimilarity(student.resumeText, activeJob?.description || '');
-                  return (
-                    <tr className="hover:bg-slate-900/40">
-                      <td className="p-3.5">
-                        <div className="font-bold text-white text-sm">{student.name}</div>
-                        <span className="text-[11px] text-slate-400">{student.email}</span>
-                      </td>
-                      <td className="p-3.5 text-slate-300">
-                        <div>{student.degree}</div>
-                        <span className="text-[10px] text-slate-400">{student.university}</span>
-                      </td>
-                      <td className="p-3.5 text-center font-mono">
-                        <span className="text-lg font-black text-cyan-400">{matchRes.jobMatchScore}%</span>
-                      </td>
-                      <td className="p-3.5 text-center font-mono">
-                        <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 font-bold border border-indigo-500/20">
-                          {tfidf}% TF-IDF
-                        </span>
-                      </td>
-                      <td className="p-3.5 text-center font-mono">
-                        <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-semibold">
-                          {matchRes.highGaps.length} High Gaps
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })()}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
       </div>
 
-      {/* MODAL: POST NEW JOB POSITION (Visible to all students upon publish) */}
+      {/* MODAL: POST NEW JOB POSITION */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
           <div className="glass-panel w-full max-w-3xl rounded-2xl border border-cyan-500/30 p-6 sm:p-8 space-y-6 max-h-[92vh] overflow-y-auto relative">
@@ -343,7 +404,7 @@ export default function RecruiterDashboard({
               </div>
               <div>
                 <h2 className="text-xl font-bold text-white">Publish New Job / Internship Posting</h2>
-                <p className="text-xs text-slate-400">Newly posted jobs are instantly published to all students in the Job Explorer tab.</p>
+                <p className="text-xs text-slate-400">Newly posted jobs are saved directly to MySQL DB and published to all students.</p>
               </div>
             </div>
             

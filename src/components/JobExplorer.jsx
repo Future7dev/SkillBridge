@@ -11,9 +11,12 @@ import {
   Send,
   X,
   PieChart,
-  GitFork
+  GitFork,
+  Star,
+  LogOut
 } from 'lucide-react';
 import { calculateJobMatch } from '../services/matchingEngine';
+import { createApplicationApi, deleteApplicationApi } from '../services/api';
 
 export default function JobExplorer({ 
   jobs, 
@@ -21,35 +24,85 @@ export default function JobExplorer({
   applications, 
   setApplications, 
   setActiveTab,
-  setSelectedJobForRoadmap
+  setSelectedJobForRoadmap,
+  refreshApplicationsFromDatabase
 }) {
   const [selectedJobForModal, setSelectedJobForModal] = useState(null);
 
-  // Apply to job handler (stores student details so recruiter sees the applicant!)
-  const handleApply = (job, matchScore) => {
-    const targetJobId = job.id || job.jobId;
-    const existing = applications.find(a => a.jobId === targetJobId);
+  // Apply to job handler (Stores candidate details in MySQL Database & state!)
+  const handleApply = async (job, matchScore) => {
+    const targetJobId = String(job.id || job.jobId);
+    const existing = applications.find(a => String(a.jobId) === targetJobId);
     if (existing) return;
+
+    const applicantName = student.name || "Student Applicant";
+    const applicantEmail = student.email || "student@university.edu";
 
     const newApp = {
       id: `app-${Date.now()}`,
       jobId: targetJobId,
       jobTitle: job.title || job.jobTitle,
       company: job.company || job.companyName,
-      studentId: student.id,
-      studentName: student.name,
-      studentEmail: student.email,
-      degree: student.degree,
-      institution: student.university,
+      studentId: student.id || `student-${Date.now()}`,
+      studentName: applicantName,
+      studentEmail: applicantEmail,
+      degree: student.degree || "B.S. Computer Science",
+      institution: student.university || "State Institute of Technology",
       appliedDate: new Date().toISOString().split('T')[0],
       status: "Under Review",
       matchScore: matchScore,
-      stageNotes: "Application submitted. Automated TF-IDF and Skill-Gap analysis complete."
+      stageNotes: "Application submitted and saved directly to MySQL database."
     };
 
-    setApplications(prev => [newApp, ...prev]);
+    // 1. Immediately update local state & localStorage
+    setApplications(prev => {
+      const updated = [newApp, ...prev];
+      localStorage.setItem('skillbridge_apps', JSON.stringify(updated));
+      return updated;
+    });
+
     setSelectedJobForModal(null);
     setActiveTab('applications');
+
+    // 2. Persist directly into MySQL Database via ASP.NET Core API
+    try {
+      const parsedUserId = parseInt(student.id || 1, 10);
+      const parsedJobId = parseInt(targetJobId || 1, 10);
+
+      await createApplicationApi({
+        userId: !isNaN(parsedUserId) ? parsedUserId : 1,
+        jobId: !isNaN(parsedJobId) ? parsedJobId : 1,
+        matchScorePct: matchScore,
+        status: "Under Review",
+        notes: `Submitted by ${applicantName} (${applicantEmail})`
+      });
+
+      if (refreshApplicationsFromDatabase) {
+        await refreshApplicationsFromDatabase();
+      }
+    } catch (err) {
+      console.warn("MySQL application save note:", err);
+    }
+  };
+
+  // Withdraw / Opt Out handler (Deletes from MySQL Database & state)
+  const handleOptOut = async (targetJobId) => {
+    const stringId = String(targetJobId);
+    const targetApp = applications.find(a => String(a.jobId) === stringId);
+
+    setApplications(prev => {
+      const updated = prev.filter(a => String(a.jobId) !== stringId);
+      localStorage.setItem('skillbridge_apps', JSON.stringify(updated));
+      return updated;
+    });
+
+    if (targetApp && !isNaN(targetApp.id)) {
+      try {
+        await deleteApplicationApi(targetApp.id);
+      } catch (err) {
+        console.warn("MySQL application delete note:", err);
+      }
+    }
   };
 
   return (
@@ -71,23 +124,33 @@ export default function JobExplorer({
       {/* Job Postings Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {jobs.map((job) => {
-          const jobId = job.id || job.jobId;
+          const jobId = String(job.id || job.jobId);
           const matchResult = calculateJobMatch(student, job);
-          const isApplied = applications.some(a => a.jobId === jobId);
+          const isApplied = applications.some(a => String(a.jobId) === jobId);
 
           return (
             <div 
               key={jobId} 
-              className="glass-panel p-6 rounded-2xl flex flex-col justify-between glass-panel-hover group relative overflow-hidden"
+              className={`glass-panel p-6 rounded-2xl flex flex-col justify-between glass-panel-hover group relative overflow-hidden ${
+                job.isNew ? 'border-2 border-cyan-500/50 shadow-glow-cyan' : ''
+              }`}
             >
               <div className="space-y-4">
                 
                 {/* Header & Match Badge */}
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
-                      {job.type || job.employmentType || 'Internship'}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                        {job.type || job.employmentType || 'Internship'}
+                      </span>
+                      {job.isNew && (
+                        <span className="text-[10px] font-extrabold text-cyan-300 bg-cyan-500/20 px-2 py-0.5 rounded-full border border-cyan-500/30 flex items-center space-x-1 animate-pulse">
+                          <Star className="w-3 h-3 fill-cyan-300 text-cyan-300" />
+                          <span>NEW POSITION</span>
+                        </span>
+                      )}
+                    </div>
                     <h3 className="font-bold text-lg text-white mt-1 group-hover:text-indigo-300 transition-colors">
                       {job.title || job.jobTitle}
                     </h3>
@@ -158,10 +221,19 @@ export default function JobExplorer({
                 </button>
 
                 {isApplied ? (
-                  <span className="px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold flex items-center space-x-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Applied</span>
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold flex items-center space-x-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Applied</span>
+                    </span>
+                    <button
+                      onClick={() => handleOptOut(jobId)}
+                      className="px-2.5 py-2 rounded-xl bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20 text-xs font-semibold transition-all"
+                      title="Opt Out / Withdraw Application"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={() => handleApply(job, matchResult.jobMatchScore)}
@@ -182,8 +254,8 @@ export default function JobExplorer({
       {selectedJobForModal && (() => {
         const modalJob = selectedJobForModal;
         const res = calculateJobMatch(student, modalJob);
-        const jobId = modalJob.id || modalJob.jobId;
-        const isApplied = applications.some(a => a.jobId === jobId);
+        const jobId = String(modalJob.id || modalJob.jobId);
+        const isApplied = applications.some(a => String(a.jobId) === jobId);
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
@@ -285,13 +357,24 @@ export default function JobExplorer({
                   <span>Generate Roadmap for Job</span>
                 </button>
 
-                {!isApplied && (
+                {!isApplied ? (
                   <button
                     onClick={() => handleApply(modalJob, res.jobMatchScore)}
                     className="flex items-center space-x-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-all shadow-glow-indigo"
                   >
                     <Send className="w-4 h-4" />
                     <span>Confirm Application</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      handleOptOut(jobId);
+                      setSelectedJobForModal(null);
+                    }}
+                    className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition-all"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Opt Out / Withdraw Application</span>
                   </button>
                 )}
               </div>
