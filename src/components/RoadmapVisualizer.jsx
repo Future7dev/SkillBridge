@@ -29,11 +29,13 @@ export default function RoadmapVisualizer({
   selectedJobForRoadmap, 
   jobs 
 }) {
+  const safeJobs = Array.isArray(jobs) && jobs.length > 0 ? jobs : [];
+  const fallbackJob = selectedJobForRoadmap || safeJobs[0] || null;
   const [activeJobId, setActiveJobId] = useState(
-    selectedJobForRoadmap ? (selectedJobForRoadmap.id || selectedJobForRoadmap.jobId) : (jobs[0]?.id || jobs[0]?.jobId)
+    fallbackJob ? (fallbackJob.id || fallbackJob.jobId) : ''
   );
 
-  const activeJob = jobs.find(j => String(j.id || j.jobId) === String(activeJobId)) || jobs[0] || selectedJobForRoadmap;
+  const activeJob = safeJobs.find(j => String(j.id || j.jobId) === String(activeJobId)) || fallbackJob;
   const roadmapData = generatePersonalizedRoadmap(student, activeJob);
   
   const [completedSteps, setCompletedSteps] = useState(new Set());
@@ -84,6 +86,20 @@ export default function RoadmapVisualizer({
     });
   };
 
+  if (!activeJob) {
+    return (
+      <div className="glass-panel p-16 rounded-2xl text-center space-y-4 animate-fadeIn">
+        <div className="w-16 h-16 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center mx-auto text-indigo-400">
+          <GitFork className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-white">No Job Postings Available</h2>
+        <p className="text-sm text-slate-400 max-w-md mx-auto">
+          No jobs are currently posted. Ask a recruiter to post a job opening, or go to Job Explorer to browse opportunities.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-fadeIn">
       
@@ -92,8 +108,8 @@ export default function RoadmapVisualizer({
         <div>
           <div className="flex items-center space-x-2">
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center space-x-1">
-              <Terminal className="w-3 h-3 text-emerald-400" />
-              <span>Python 3.12 NLP Engine</span>
+              <Sparkles className="w-3 h-3 text-emerald-400" />
+              <span>AI-Powered Roadmap</span>
             </span>
           </div>
           <h1 className="text-2xl font-black text-white mt-1 flex items-center space-x-3">
@@ -101,7 +117,7 @@ export default function RoadmapVisualizer({
             <span>Curated Learning Roadmap & Video Courses</span>
           </h1>
           <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-            SkillBridge uses a Python 3.12 microservice (TF-IDF Vectorization & NER) to analyze job text and curate your learning roadmap.
+            SkillBridge analyzes the job description and your resume to identify skill gaps and build a personalized step-by-step learning roadmap.
           </p>
         </div>
 
@@ -116,7 +132,7 @@ export default function RoadmapVisualizer({
             onChange={(e) => setActiveJobId(e.target.value)}
             className="bg-slate-900 border border-slate-700 text-white text-xs font-semibold rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 shadow-lg"
           >
-            {jobs.map(j => (
+            {safeJobs.map(j => (
               <option key={j.id || j.jobId} value={j.id || j.jobId}>
                 {j.title || j.jobTitle} ({j.company || j.companyName})
               </option>
@@ -135,15 +151,15 @@ export default function RoadmapVisualizer({
             <div>
               <div className="flex items-center space-x-2">
                 <h2 className="text-base font-bold text-white">
-                  Python 3.12 NLP Analysis: {activeJob.title || activeJob.jobTitle}
+                  AI Analysis: {activeJob.title || activeJob.jobTitle}
                 </h2>
                 {pythonLoading ? (
                   <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 animate-pulse">
-                    Running Python NLP...
+                    Analyzing...
                   </span>
                 ) : (
                   <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    Engine Active
+                    Analysis Ready
                   </span>
                 )}
               </div>
@@ -151,72 +167,60 @@ export default function RoadmapVisualizer({
             </div>
           </div>
 
-          {/* Python TF-IDF Similarity Score Badge */}
           <div className="flex items-center space-x-3 bg-slate-900/90 p-3 rounded-xl border border-emerald-500/30">
             <div className="text-right">
-              <span className="text-[10px] text-slate-400 block font-medium uppercase">Python TF-IDF Match</span>
+              <span className="text-[10px] text-slate-400 block font-medium uppercase">Resume Match Score</span>
               <span className="text-xl font-black text-emerald-400">
                 {pythonNlpResult ? `${pythonNlpResult.tfidfMatchScorePct}%` : `${roadmapData.tfidfScore}%`}
               </span>
             </div>
             <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 font-bold text-xs border border-emerald-500/20">
-              Python 3.12
+              AI Score
             </span>
           </div>
         </div>
 
-        {/* Python NER Extracted Skills Breakdown */}
-        {pythonNlpResult && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
-              <span className="font-bold text-slate-200 block text-xs">Python Detected Resume Skills:</span>
-              <div className="flex flex-wrap gap-1.5">
-                {pythonNlpResult.resumeSkillsDetected.map((sk, idx) => (
-                  <span key={idx} className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 font-semibold border border-indigo-500/20 text-[11px]">
-                    {sk.skillName}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
-              <span className="font-bold text-slate-200 block text-xs">Python Extracted Job Requirements:</span>
-              <div className="flex flex-wrap gap-1.5">
-                {pythonNlpResult.jobRequirementsDetected.map((sk, idx) => (
-                  <span key={idx} className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-semibold border border-emerald-500/20 text-[11px]">
-                    {sk.skillName}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Recommendation Priority Banner */}
         <div className="p-3.5 rounded-xl bg-indigo-600/10 border border-indigo-500/30 text-xs flex items-center space-x-2 text-indigo-200">
           <Sparkles className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-          <span><strong>Python Roadmap Recommendation:</strong> {roadmapData.topRecommendation}</span>
+          <span><strong>Recommendation:</strong> {roadmapData.topRecommendation}</span>
         </div>
       </div>
 
-      {/* Visual Prerequisite Architecture Diagram */}
-      <div className="glass-panel p-6 rounded-2xl space-y-4">
-        <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
-          <Layers className="w-4 h-4 text-cyan-400" />
-          <span>Platform Skill Dependency Graph</span>
-        </h3>
-        <div className="flex flex-wrap items-center gap-3 p-4 rounded-xl bg-slate-950/80 border border-slate-800 text-xs">
-          <span className="px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-300 font-bold border border-indigo-500/30">C#</span>
-          <ArrowRight className="w-4 h-4 text-slate-600" />
-          <span className="px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-300 font-bold border border-indigo-500/30">ASP.NET Core</span>
-          <ArrowRight className="w-4 h-4 text-slate-600" />
-          <span className="px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-300 font-bold border border-indigo-500/30">Entity Framework</span>
-          <ArrowRight className="w-4 h-4 text-slate-600" />
-          <span className="px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-300 font-bold border border-indigo-500/30">Docker</span>
-          <ArrowRight className="w-4 h-4 text-slate-600" />
-          <span className="px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-300 font-bold border border-indigo-500/30">Azure</span>
+      {/* Dynamic Skill Learning Path */}
+      {roadmapData.roadmap.length > 0 && (
+        <div className="glass-panel p-6 rounded-2xl space-y-4">
+          <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+            <Layers className="w-4 h-4 text-cyan-400" />
+            <span>Skill Learning Path</span>
+          </h3>
+          <div className="flex flex-wrap items-center gap-2 p-4 rounded-xl bg-slate-950/80 border border-slate-800 text-xs">
+            {roadmapData.roadmap.map((step, idx) => {
+              const isDone = completedSteps.has(step.skillId);
+              return (
+                <React.Fragment key={step.skillId}>
+                  <span className={`px-3 py-1.5 rounded-lg font-bold border transition-all ${
+                    isDone
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                      : idx === 0
+                      ? 'bg-indigo-600/30 text-indigo-200 border-indigo-500/50 shadow-glow-indigo'
+                      : 'bg-slate-800/60 text-slate-400 border-slate-700/50'
+                  }`}>
+                    {isDone && <span className="mr-1">✓</span>}{step.skillName}
+                  </span>
+                  {idx < roadmapData.roadmap.length - 1 && (
+                    <ArrowRight className="w-4 h-4 text-slate-600 flex-shrink-0" />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-slate-500">
+            {completedSteps.size} of {roadmapData.roadmap.length} skills completed — highlighted in green · current focus in blue
+          </p>
         </div>
-      </div>
+      )}
 
       {/* Step-by-Step Learning Timeline */}
       {roadmapData.isComplete ? (
@@ -300,7 +304,7 @@ export default function RoadmapVisualizer({
                   {/* Reason & Prerequisite info */}
                   <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-300 space-y-1">
                     <p><strong className="text-indigo-400">Why Recommended:</strong> {step.reason}</p>
-                    {step.prerequisites.length > 0 && (
+                    {step.prerequisites && step.prerequisites.length > 0 && (
                       <p><strong className="text-slate-400">Prerequisites:</strong> {step.prerequisites.join(', ')}</p>
                     )}
                   </div>

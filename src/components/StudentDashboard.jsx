@@ -425,15 +425,15 @@ export default function StudentDashboard({
           <div className="glass-card p-5 rounded-2xl border border-indigo-500/20 text-xs space-y-3">
             <div className="flex items-center space-x-2 text-indigo-400 font-bold">
               <Info className="w-4 h-4" />
-              <span>SkillBridge Mathematical Engine</span>
+              <span>How Your Match Score Works</span>
             </div>
             <p className="text-slate-400 leading-relaxed text-[11px]">
-              Matches are deterministic & explainable:
+              Your readiness score is calculated transparently:
             </p>
-            <div className="p-3 rounded-lg bg-slate-900/90 font-mono text-[10px] space-y-1.5 text-slate-300 border border-slate-800">
-              <div>• Gap = max(Required - Student, 0)</div>
-              <div>• Match = min(Student / Required, 1)</div>
-              <div>• Job Score = Σ(Match × Weight) / Σ(Weight) × 100</div>
+            <div className="p-3 rounded-lg bg-slate-900/90 text-[11px] space-y-1.5 text-slate-300 border border-slate-800">
+              <div>• Gap = how far you are from what the job needs</div>
+              <div>• Match = your level vs. required level (0–100%)</div>
+              <div>• Score = weighted average across all required skills</div>
             </div>
           </div>
 
