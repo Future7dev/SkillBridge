@@ -13,9 +13,25 @@ export function getEffectiveProficiency(studentSkillRecord) {
 }
 
 /**
+ * Normalize a job object — handles both frontend (id, title, company) and DB (jobId, jobTitle, companyName) shapes
+ */
+function normalizeJob(job) {
+  if (!job) return null;
+  return {
+    ...job,
+    id: job.id || job.jobId || '',
+    title: job.title || job.jobTitle || '',
+    company: job.company || job.companyName || '',
+    description: job.description || job.jobDescription || '',
+    skillsRequired: job.skillsRequired || job.jobSkills || []
+  };
+}
+
+/**
  * Calculate complete match metrics between a student and a job requirement
  */
-export function calculateJobMatch(student, job) {
+export function calculateJobMatch(student, rawJob) {
+  const job = normalizeJob(rawJob);
   if (!student || !job) {
     return {
       jobMatchScore: 0,
@@ -28,7 +44,8 @@ export function calculateJobMatch(student, job) {
     };
   }
 
-  const rawSkills = job.skillsRequired || job.jobSkills || [];
+  // Merge structured skill requirements + NLP-extracted from JD text
+  const rawSkills = job.skillsRequired || [];
   const textSkills = extractSkillsFromText(job.description || '');
   const existingSkillIds = new Set(rawSkills.map(s => s.skillId || s.skill?.canonicalCode));
 
@@ -39,7 +56,7 @@ export function calculateJobMatch(student, job) {
         skillId: ts.skillId,
         skillName: ts.skillName,
         requiredProficiency: ts.detectedProficiency || 3,
-        weight: 15,
+        weight: 12,
         importance: 'Required'
       });
       existingSkillIds.add(ts.skillId);
@@ -55,27 +72,19 @@ export function calculateJobMatch(student, job) {
   })) : [
     { skillId: 'csharp', skillName: 'C#', requiredProficiency: 3, weight: 25, importance: 'Required' },
     { skillId: 'aspnet_core', skillName: 'ASP.NET Core', requiredProficiency: 3, weight: 25, importance: 'Required' },
-    { skillId: 'sql_server', skillName: 'SQL Server', requiredProficiency: 3, weight: 20, importance: 'Required' }
+    { skillId: 'sql', skillName: 'SQL', requiredProficiency: 3, weight: 20, importance: 'Required' }
   ];
 
   let totalWeightedMatch = 0;
   let totalWeightSum = 0;
-
-  const skillBreakdown = [];
-  const strongSkills = [];
-  const lowGaps = [];
-  const mediumGaps = [];
-  const highGaps = [];
+  const skillBreakdown = [], strongSkills = [], lowGaps = [], mediumGaps = [], highGaps = [];
 
   const studentSkillMap = new Map();
-  (student.skills || []).forEach(s => {
-    studentSkillMap.set(s.skillId, s);
-  });
+  (student.skills || []).forEach(s => studentSkillMap.set(s.skillId, s));
 
   skillsRequired.forEach(req => {
     const studentRecord = studentSkillMap.get(req.skillId);
     const effectiveProficiency = getEffectiveProficiency(studentRecord);
-
     const requiredProficiency = req.requiredProficiency || 1;
     const skillMatch = Math.min(effectiveProficiency / requiredProficiency, 1);
     const weight = req.weight || 10;
@@ -115,11 +124,10 @@ export function calculateJobMatch(student, job) {
 
   const jobMatchScore = totalWeightSum > 0 ? Math.round((totalWeightedMatch / totalWeightSum) * 100) : 0;
 
-  let summaryLabel = "Strong Match";
+  let summaryLabel = "Needs Growth";
   if (jobMatchScore >= 85) summaryLabel = "Excellent Match";
-  else if (jobMatchScore >= 70) summaryLabel = "Moderate/Strong Match";
+  else if (jobMatchScore >= 70) summaryLabel = "Strong Match";
   else if (jobMatchScore >= 50) summaryLabel = "Moderate Match";
-  else summaryLabel = "Needs Growth";
 
   return {
     jobMatchScore,
@@ -134,30 +142,77 @@ export function calculateJobMatch(student, job) {
 }
 
 /**
- * Generate Personalized Learning Roadmap STRICTLY based on NLP text extraction from Job Description and Student Resume Text
+ * Generate Personalized Learning Roadmap STRICTLY based on:
+ * 1. NLP text extraction from Job Description (what job requires)
+ * 2. NLP text extraction from Student Resume Text (what student has)
+ * 
+ * Gap = Skills extracted from JD text - Skills extracted from Resume text
  */
-export function generatePersonalizedRoadmap(student, targetJob) {
-  const resumeText = student?.resumeText || `${student?.name || ''} ${student?.degree || ''} ${student?.university || ''}`;
-  const jobDesc = targetJob?.description || `${targetJob?.title || ''} ${targetJob?.company || ''}`;
+export function generatePersonalizedRoadmap(student, rawJob) {
+  const job = normalizeJob(rawJob);
+
+  // Use actual resume text for NLP; fall back to skill names if no resume provided
+  let resumeText = student?.resumeText || '';
+  if (!resumeText || resumeText.trim().length < 20) {
+    // Build synthetic resume text from skills list as fallback
+    resumeText = (student?.skills || [])
+      .filter(s => (s.selfAssessment || 0) > 0)
+      .map(s => {
+        const canonical = CANONICAL_SKILLS.find(c => c.id === s.skillId);
+        return canonical ? `${canonical.name} ${canonical.synonyms.join(' ')}` : s.skillId;
+      })
+      .join(' ');
+  }
+
+  const jobDesc = job?.description || `${job?.title || ''} ${job?.company || ''}`;
+
+  if (!jobDesc || jobDesc.trim().length < 10) {
+    return {
+      roadmap: [],
+      topRecommendation: "Please select a job with a description to generate your roadmap.",
+      isComplete: false,
+      tfidfScore: 0,
+      extractedJdSkills: [],
+      extractedResumeSkills: []
+    };
+  }
 
   // 1. Extract skills from Job Description text using NLP NER
   const extractedJdSkills = extractSkillsFromText(jobDesc);
-  
+
   // 2. Extract skills from Student Resume text using NLP NER
   const extractedResumeSkills = extractSkillsFromText(resumeText);
   const resumeSkillSet = new Set(extractedResumeSkills.map(s => s.skillId));
 
-  // 3. Skill Gaps = Extracted JD text skills NOT present in Extracted Resume text skills
+  // Also add skills from structured student.skills array (explicitly added skills)
+  (student?.skills || []).forEach(s => {
+    if ((s.selfAssessment || 0) >= 2) {
+      resumeSkillSet.add(s.skillId);
+    }
+  });
+
+  // 3. Skill Gaps = Extracted JD text skills NOT present in Resume/Profile skills
   const missingGaps = extractedJdSkills.filter(sk => !resumeSkillSet.has(sk.skillId));
 
   // Compute TF-IDF Cosine Similarity score
   const tfidfScore = calculateTfidfCosineSimilarity(resumeText, jobDesc);
 
-  if (missingGaps.length === 0) {
+  if (missingGaps.length === 0 && extractedJdSkills.length > 0) {
     return {
       roadmap: [],
-      topRecommendation: "NLP text analysis shows your resume covers all skills extracted from this job description!",
+      topRecommendation: `🎉 NLP analysis shows your profile already covers all ${extractedJdSkills.length} skills extracted from this job description! You're a strong match for ${job?.title || 'this role'}.`,
       isComplete: true,
+      tfidfScore,
+      extractedJdSkills,
+      extractedResumeSkills
+    };
+  }
+
+  if (extractedJdSkills.length === 0) {
+    return {
+      roadmap: [],
+      topRecommendation: "Could not extract specific skills from the job description. Try selecting a job with a detailed description.",
+      isComplete: false,
       tfidfScore,
       extractedJdSkills,
       extractedResumeSkills
@@ -185,19 +240,23 @@ export function generatePersonalizedRoadmap(student, targetJob) {
 
     const canonical = CANONICAL_SKILLS.find(c => c.id === skillId);
     const finalName = skillName || (canonical ? canonical.name : skillId);
+    const prereqNames = (prereqs || [])
+      .map(p => {
+        const pObj = CANONICAL_SKILLS.find(c => c.id === p);
+        return pObj ? pObj.name : p;
+      })
+      .filter(Boolean);
 
     orderedSkills.push({
       skillId,
       skillName: finalName,
+      category: canonical?.category || 'General',
       extractedFromDesc: true,
       currentLevel: resumeSkillSet.has(skillId) ? 2 : 0,
       targetLevel: 4,
       gap: resumeSkillSet.has(skillId) ? 2 : 3,
-      prerequisites: prereqs.map(p => {
-        const pObj = CANONICAL_SKILLS.find(c => c.id === p);
-        return pObj ? pObj.name : p;
-      }),
-      reason: `NLP Text Extraction: "${finalName}" was identified in the Job Description text as a core requirement not found in student's resume text.`
+      prerequisites: prereqNames,
+      reason: `Extracted from Job Description text: "${finalName}" is required for ${job?.title || 'this role'} but not found in your resume.`
     });
   }
 
@@ -206,8 +265,8 @@ export function generatePersonalizedRoadmap(student, targetJob) {
   });
 
   const topSkill = orderedSkills[0];
-  const topRecommendation = topSkill 
-    ? `NLP Text Extraction recommends learning ${topSkill.skillName} first based on text analysis of ${targetJob?.title || targetJob?.jobTitle}.`
+  const topRecommendation = topSkill
+    ? `Start with ${topSkill.skillName} — NLP extracted ${missingGaps.length} missing skill${missingGaps.length > 1 ? 's' : ''} from the ${job?.title || 'job'} description. Your resume matched ${extractedResumeSkills.length} of ${extractedJdSkills.length} required skills.`
     : "Follow your custom text-extracted roadmap below.";
 
   return {
