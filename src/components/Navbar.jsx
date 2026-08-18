@@ -31,7 +31,7 @@ export default function Navbar({
     { id: 'applications', label: 'Applications', icon: Send, roleRequired: null },
     { id: 'recruiter', label: 'Recruiter Hub', icon: Users, roleRequired: 'Recruiter', highlight: 'cyan' },
     { id: 'mentor', label: 'Mentor Workspace', icon: Sparkles, roleRequired: 'Mentor', highlight: 'emerald' },
-    { id: 'analytics', label: 'Analytics & ML', icon: BarChart3, roleRequired: null }
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, roleRequired: null }
   ];
 
   const visibleNavItems = navItems.filter(item => {
@@ -60,7 +60,7 @@ export default function Navbar({
                   SkillBridge
                 </span>
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hidden lg:inline-block">
-                  MySQL & .NET 8
+                  AI-Powered
                 </span>
               </div>
             </div>

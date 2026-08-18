@@ -260,13 +260,13 @@ export default function App() {
         <footer className="w-full border-t border-slate-800/80 bg-[#070a12] py-6 mt-12">
           <div className="w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
             <div>
-              <span className="font-bold text-slate-300">SkillBridge</span> — ASP.NET Core Web API + MySQL Database
+              <span className="font-bold text-slate-300">SkillBridge</span> — Smart Internship & Career Readiness Platform
               <span className="block sm:inline text-slate-600 sm:ml-2">Understand your skills. Find your gaps. Build your career.</span>
             </div>
             <div className="flex items-center space-x-3 text-[11px] font-mono">
-              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-indigo-400">React 18</span>
-              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-emerald-400">.NET 8 Web API</span>
-              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-cyan-400">MySQL DB</span>
+              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-indigo-400">Smart Matching</span>
+              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-emerald-400">Secure Database</span>
+              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-cyan-400">AI Resume Analysis</span>
             </div>
           </div>
         </footer>

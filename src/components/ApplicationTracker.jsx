@@ -73,7 +73,7 @@ export default function ApplicationTracker({
             <span>Student Application Tracker</span>
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Track recruitment stage progress, interview status, or withdraw/opt out of applications stored in MySQL.
+            Track recruitment stage progress, interview status, or withdraw your applications.
           </p>
         </div>
       </div>

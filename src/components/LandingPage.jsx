@@ -34,7 +34,7 @@ export default function LandingPage({ onOpenAuthModal }) {
                   SkillBridge
                 </span>
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                  .NET 8 Web API
+                  AI-Powered
                 </span>
               </div>
               <p className="text-xs text-slate-400 hidden sm:block">
@@ -66,7 +66,7 @@ export default function LandingPage({ onOpenAuthModal }) {
           <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-slate-900/90 border border-indigo-500/30 shadow-glow-indigo">
             <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
             <span className="text-xs font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-cyan-300 to-emerald-300">
-              ASP.NET Core Web API + SQLite Relational Database Engine
+              Smart Skill Gap Analysis & Career Roadmap Platform
             </span>
           </div>
 
@@ -80,7 +80,7 @@ export default function LandingPage({ onOpenAuthModal }) {
 
           <p className="text-base sm:text-lg text-slate-400 max-w-3xl mx-auto leading-relaxed">
             SkillBridge compares student profiles against real internship requirements. 
-            Calculate explainable readiness scores, parse resumes using TF-IDF NLP vectorization, and follow prerequisite-aware learning roadmaps.
+            Get accurate readiness scores, analyze your resume automatically, and follow personalized step-by-step learning roadmaps with curated video courses.
           </p>
 
           {/* Hero CTAs (No Guest mode, users must Sign In or Register) */}
@@ -111,10 +111,10 @@ export default function LandingPage({ onOpenAuthModal }) {
           </div>
 
           <div className="pt-8 flex flex-wrap items-center justify-center gap-3 text-xs text-slate-400 font-mono">
-            <span className="px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800">React.js</span>
-            <span className="px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-indigo-300">ASP.NET Core Web API</span>
-            <span className="px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-cyan-300">SQLite SQL Database</span>
-            <span className="px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-emerald-300">TF-IDF + Cosine Similarity</span>
+            <span className="px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-indigo-300">⚡ Smart Resume Analysis</span>
+            <span className="px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-cyan-300">🎯 Job Match Scoring</span>
+            <span className="px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-emerald-300">🗺️ Learning Roadmaps</span>
+            <span className="px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-amber-300">▶️ YouTube Video Courses</span>
           </div>
         </section>
 
@@ -205,7 +205,7 @@ export default function LandingPage({ onOpenAuthModal }) {
                   </li>
                   <li className="flex items-center space-x-2">
                     <CheckCircle2 className="w-4 h-4 text-indigo-400" />
-                    <span>Parse resume text with NLP</span>
+                    <span>Analyze resume & auto-detect skills</span>
                   </li>
                   <li className="flex items-center space-x-2">
                     <CheckCircle2 className="w-4 h-4 text-indigo-400" />
@@ -240,7 +240,7 @@ export default function LandingPage({ onOpenAuthModal }) {
                   </li>
                   <li className="flex items-center space-x-2">
                     <CheckCircle2 className="w-4 h-4 text-cyan-400" />
-                    <span>TF-IDF document similarity</span>
+                    <span>Smart resume-to-job matching score</span>
                   </li>
                 </ul>
               </div>
@@ -297,9 +297,9 @@ export default function LandingPage({ onOpenAuthModal }) {
             <span className="block sm:inline text-slate-600 sm:ml-2">Understand your skills. Find your gaps. Build your career.</span>
           </div>
           <div className="flex items-center space-x-3 text-[11px] font-mono">
-            <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-indigo-400">React 18</span>
-            <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-emerald-400">.NET 8.0 Web API</span>
-            <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-cyan-400">SQLite SQL DB</span>
+            <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-indigo-400">Smart Matching</span>
+            <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-emerald-400">Cloud Database</span>
+            <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-cyan-400">AI Resume Analysis</span>
           </div>
         </div>
       </footer>

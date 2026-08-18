@@ -147,7 +147,7 @@ export default function AuthModal({
             SkillBridge Portal Authentication
           </h2>
           <p className="text-xs text-slate-400">
-            {authMode === 'login' ? 'Sign in to your registered account' : `Create a new ${activeRoleTab} account in the MySQL Database`}
+            {authMode === 'login' ? 'Sign in to your registered account' : `Create a new ${activeRoleTab} account`}
           </p>
         </div>
 
@@ -233,7 +233,7 @@ export default function AuthModal({
         {/* Seed Account Shortcut */}
         <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2 text-xs">
           <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400">
-            <span>⚡ Seed Accounts in MySQL Database:</span>
+            <span>⚡ Quick Demo Login:</span>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -538,11 +538,11 @@ export default function AuthModal({
             }`}
           >
             {isLoading ? (
-              <span>Verifying with MySQL Database API...</span>
+              <span>Verifying credentials...</span>
             ) : (
               <>
                 <span>
-                  {authMode === 'login' ? `Sign In as ${activeRoleTab}` : `Register New ${activeRoleTab} in MySQL`}
+                  {authMode === 'login' ? `Sign In as ${activeRoleTab}` : `Register New ${activeRoleTab}`}
                 </span>
                 <ArrowRight className="w-4 h-4" />
               </>
