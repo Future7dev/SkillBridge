@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SkillBridge.Api.Data;
@@ -32,6 +33,7 @@ namespace SkillBridge.Api.Controllers
 
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]  // All endpoints require a valid JWT by default
     public class JobsController : ControllerBase
     {
         private readonly AppDbContext _db;
@@ -41,7 +43,7 @@ namespace SkillBridge.Api.Controllers
             _db = db;
         }
 
-        // GET: /api/jobs (Fetches all job postings from MySQL Database)
+        // GET: /api/jobs — Any authenticated user can browse jobs
         [HttpGet]
         public async Task<IActionResult> GetJobs()
         {
@@ -79,7 +81,7 @@ namespace SkillBridge.Api.Controllers
             return Ok(result);
         }
 
-        // GET: /api/jobs/{id}
+        // GET: /api/jobs/{id} — Any authenticated user
         [HttpGet("{id}")]
         public async Task<IActionResult> GetJob(int id)
         {
@@ -87,7 +89,7 @@ namespace SkillBridge.Api.Controllers
                 .Include(j => j.JobSkills)
                 .ThenInclude(js => js.Skill)
                 .FirstOrDefaultAsync(job => job.JobId == id);
-            
+
             if (j == null) return NotFound();
 
             var result = new
@@ -116,8 +118,9 @@ namespace SkillBridge.Api.Controllers
             return Ok(result);
         }
 
-        // POST: /api/jobs (Stores job posting in MySQL Database `jobs` and `job_skills` tables)
+        // POST: /api/jobs — Only Recruiters and Admins can post jobs
         [HttpPost]
+        [Authorize(Roles = "Recruiter,Admin")]
         public async Task<IActionResult> CreateJob([FromBody] CreateJobRequestDto dto)
         {
             var job = new Job
@@ -136,7 +139,6 @@ namespace SkillBridge.Api.Controllers
             _db.Jobs.Add(job);
             await _db.SaveChangesAsync();
 
-            // Link skill requirements to job in MySQL
             if (dto.Skills != null && dto.Skills.Count > 0)
             {
                 foreach (var sk in dto.Skills)
@@ -172,8 +174,9 @@ namespace SkillBridge.Api.Controllers
             });
         }
 
-        // DELETE: /api/jobs/{id} (Deletes a job posting from MySQL Database)
+        // DELETE: /api/jobs/{id} — Only Recruiters and Admins can delete jobs
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Recruiter,Admin")]
         public async Task<IActionResult> DeleteJob(int id)
         {
             var job = await _db.Jobs.FindAsync(id);
