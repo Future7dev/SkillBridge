@@ -5,7 +5,6 @@ import StudentDashboard from './components/StudentDashboard';
 import JobExplorer from './components/JobExplorer';
 import RoadmapVisualizer from './components/RoadmapVisualizer';
 import RecruiterDashboard from './components/RecruiterDashboard';
-import MentorDashboard from './components/MentorDashboard';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import ApplicationTracker from './components/ApplicationTracker';
 import ResumeAnalyzerModal from './components/ResumeAnalyzerModal';
@@ -133,7 +132,6 @@ export default function App() {
     }));
 
     if (userData.role === 'Recruiter') setActiveTab('recruiter');
-    else if (userData.role === 'Mentor') setActiveTab('mentor');
     else setActiveTab('student-dashboard');
   };
 
@@ -213,12 +211,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'mentor' && (
-              <MentorDashboard
-                student={student}
-                jobs={jobs}
-              />
-            )}
 
             {activeTab === 'analytics' && (
               <AnalyticsDashboard
