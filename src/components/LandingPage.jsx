@@ -101,13 +101,6 @@ export default function LandingPage({ onOpenAuthModal }) {
               <span>Recruiter & Company Portal</span>
             </button>
 
-            <button
-              onClick={() => onOpenAuthModal('Mentor')}
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl glass-panel hover:bg-slate-800 text-white font-extrabold text-sm border border-slate-700 transition-all flex items-center justify-center space-x-2"
-            >
-              <Sparkles className="w-4 h-4 text-emerald-400" />
-              <span>Mentor Workspace</span>
-            </button>
           </div>
 
           <div className="pt-8 flex flex-wrap items-center justify-center gap-3 text-xs text-slate-400 font-mono">
@@ -189,7 +182,7 @@ export default function LandingPage({ onOpenAuthModal }) {
             <p className="text-sm text-slate-400">Existing users sign in; new users create a role-specific account.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl mx-auto">
             
             {/* Student Card */}
             <div className="glass-panel p-8 rounded-3xl border border-indigo-500/30 flex flex-col justify-between space-y-6 glass-panel-hover">
@@ -250,37 +243,6 @@ export default function LandingPage({ onOpenAuthModal }) {
                 className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition-all shadow-glow-cyan"
               >
                 Sign In / Register as Recruiter
-              </button>
-            </div>
-
-            {/* Mentor Card */}
-            <div className="glass-panel p-8 rounded-3xl border border-emerald-500/30 flex flex-col justify-between space-y-6 glass-panel-hover">
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
-                  <Sparkles className="w-6 h-6" />
-                </div>
-                <h3 className="text-xl font-bold text-white">For Mentors</h3>
-                <ul className="space-y-2.5 text-xs text-slate-400">
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>Review assigned students</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>Validate roadmap progress</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>Post guidance notes</span>
-                  </li>
-                </ul>
-              </div>
-
-              <button
-                onClick={() => onOpenAuthModal('Mentor')}
-                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all shadow-glow-emerald"
-              >
-                Sign In / Register as Mentor
               </button>
             </div>
 
