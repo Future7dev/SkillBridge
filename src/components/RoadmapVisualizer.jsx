@@ -20,6 +20,7 @@ import {
   Cpu
 } from 'lucide-react';
 import { generatePersonalizedRoadmap } from '../services/matchingEngine';
+import { calculateTfidfCosineSimilarity } from '../services/nlpEngine';
 import { LEARNING_RESOURCES } from '../data/skillsData';
 import { analyzePythonNlp } from '../services/api';
 
@@ -141,51 +142,113 @@ export default function RoadmapVisualizer({
         </div>
       </div>
 
-      {/* 🐍 PYTHON 3.12 NLP ENGINE ANALYSIS STATUS PANEL */}
-      <div className="glass-panel p-6 rounded-2xl border border-emerald-500/30 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold">
-              <Cpu className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h2 className="text-base font-bold text-white">
-                  AI Analysis: {activeJob.title || activeJob.jobTitle}
-                </h2>
-                {pythonLoading ? (
-                  <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 animate-pulse">
-                    Analyzing...
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    Analysis Ready
-                  </span>
-                )}
+      {/* ── RESUME SCORE CARD ───────────────────────────────────────────── */}
+      {(() => {
+        const resumeScore = calculateTfidfCosineSimilarity(
+          student?.resumeText || '',
+          activeJob?.description || ''
+        );
+        const hasResume = (student?.resumeText || '').trim().length > 20;
+        const gapCount = roadmapData?.roadmap?.length || 0;
+        const totalSkills = (roadmapData?.extractedJdSkills || []).length || gapCount;
+
+        let scoreLabel = 'Needs Work';
+        let scoreBg = 'from-rose-600/20 to-rose-500/10';
+        let scoreBorder = 'border-rose-500/30';
+        let scoreColor = 'text-rose-400';
+        let ringColor = 'bg-rose-500';
+        if (resumeScore >= 70) {
+          scoreLabel = 'Strong Match'; scoreBg = 'from-emerald-600/20 to-emerald-500/10';
+          scoreBorder = 'border-emerald-500/30'; scoreColor = 'text-emerald-400'; ringColor = 'bg-emerald-500';
+        } else if (resumeScore >= 45) {
+          scoreLabel = 'Partial Match'; scoreBg = 'from-amber-600/20 to-amber-500/10';
+          scoreBorder = 'border-amber-500/30'; scoreColor = 'text-amber-400'; ringColor = 'bg-amber-500';
+        }
+
+        return (
+          <div className={`glass-panel rounded-2xl border ${scoreBorder} overflow-hidden`}>
+            <div className={`bg-gradient-to-r ${scoreBg} p-6`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+
+                {/* Left: Score Ring + Label */}
+                <div className="flex items-center space-x-5">
+                  {/* Circular score indicator */}
+                  <div className="relative flex-shrink-0">
+                    <svg className="w-24 h-24 -rotate-90" viewBox="0 0 80 80">
+                      <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8"/>
+                      <circle
+                        cx="40" cy="40" r="34" fill="none"
+                        stroke={resumeScore >= 70 ? '#34d399' : resumeScore >= 45 ? '#fbbf24' : '#f87171'}
+                        strokeWidth="8"
+                        strokeLinecap="round"
+                        strokeDasharray={`${2 * Math.PI * 34}`}
+                        strokeDashoffset={`${2 * Math.PI * 34 * (1 - (hasResume ? resumeScore : 0) / 100)}`}
+                        className="transition-all duration-700"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className={`text-2xl font-black ${scoreColor}`}>
+                        {hasResume ? resumeScore : '--'}
+                      </span>
+                      <span className="text-[9px] text-slate-400 font-bold">
+                        {hasResume ? '%' : 'No PDF'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] text-slate-400 uppercase font-bold tracking-wider mb-1">
+                      Resume Match Score
+                    </p>
+                    <h2 className="text-2xl font-black text-white">
+                      {activeJob?.title || activeJob?.jobTitle}
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {activeJob?.company || activeJob?.companyName}
+                      {activeJob?.location ? ` · ${activeJob.location}` : ''}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right: Stats */}
+                <div className="flex flex-wrap gap-3">
+                  <div className={`px-4 py-3 rounded-xl bg-slate-900/70 border ${scoreBorder} text-center min-w-[90px]`}>
+                    <span className={`text-2xl font-black ${scoreColor} block`}>
+                      {hasResume ? resumeScore + '%' : '—'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Match</span>
+                  </div>
+                  <div className="px-4 py-3 rounded-xl bg-slate-900/70 border border-slate-700 text-center min-w-[90px]">
+                    <span className="text-2xl font-black text-rose-400 block">{gapCount}</span>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Skill Gaps</span>
+                  </div>
+                  <div className="px-4 py-3 rounded-xl bg-slate-900/70 border border-slate-700 text-center min-w-[90px]">
+                    <span className={`text-sm font-black block mt-1 ${scoreColor}`}>{scoreLabel}</span>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Rating</span>
+                  </div>
+                </div>
+
               </div>
-              <p className="text-xs text-slate-400">{activeJob.company || activeJob.companyName} • {activeJob.location}</p>
+
+              {/* No-resume nudge */}
+              {!hasResume && (
+                <div className="mt-4 flex items-center space-x-2 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs">
+                  <FileText className="w-4 h-4 flex-shrink-0" />
+                  <span>
+                    Upload your resume PDF (via <strong>Profile & Skills → Scan Resume</strong>) to see your actual match score for this job.
+                  </span>
+                </div>
+              )}
             </div>
           </div>
-
-          <div className="flex items-center space-x-3 bg-slate-900/90 p-3 rounded-xl border border-emerald-500/30">
-            <div className="text-right">
-              <span className="text-[10px] text-slate-400 block font-medium uppercase">Resume Match Score</span>
-              <span className="text-xl font-black text-emerald-400">
-                {pythonNlpResult ? `${pythonNlpResult.tfidfMatchScorePct}%` : `${roadmapData.tfidfScore}%`}
-              </span>
-            </div>
-            <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 font-bold text-xs border border-emerald-500/20">
-              AI Score
-            </span>
-          </div>
-        </div>
+        );
+      })()}
 
 
-        {/* Recommendation Priority Banner */}
-        <div className="p-3.5 rounded-xl bg-indigo-600/10 border border-indigo-500/30 text-xs flex items-center space-x-2 text-indigo-200">
-          <Sparkles className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-          <span><strong>Recommendation:</strong> {roadmapData.topRecommendation}</span>
-        </div>
+      {/* Recommendation Banner */}
+      <div className="p-4 rounded-2xl bg-indigo-600/10 border border-indigo-500/30 text-xs flex items-start space-x-3 text-indigo-200 glass-panel">
+        <Sparkles className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
+        <span className="leading-relaxed"><strong className="text-indigo-300">Recommendation: </strong>{roadmapData.topRecommendation}</span>
       </div>
 
       {/* Dynamic Skill Learning Path */}
