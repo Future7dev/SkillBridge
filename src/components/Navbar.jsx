@@ -30,7 +30,6 @@ export default function Navbar({
     { id: 'roadmap', label: 'Learning Roadmap', icon: GitFork, roleRequired: null },
     { id: 'applications', label: 'Applications', icon: Send, roleRequired: null },
     { id: 'recruiter', label: 'Recruiter Hub', icon: Users, roleRequired: 'Recruiter', highlight: 'cyan' },
-    { id: 'mentor', label: 'Mentor Workspace', icon: Sparkles, roleRequired: 'Mentor', highlight: 'emerald' },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, roleRequired: null }
   ];
 
