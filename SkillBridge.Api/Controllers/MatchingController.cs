@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SkillBridge.Api.Data;
@@ -8,6 +9,7 @@ namespace SkillBridge.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]  // Matching scores are only for authenticated users
     public class MatchingController : ControllerBase
     {
         private readonly AppDbContext _db;
@@ -19,6 +21,7 @@ namespace SkillBridge.Api.Controllers
             _matcher = matcher;
         }
 
+        // GET: /api/matching/calculate/{userId}/{jobId}
         [HttpGet("calculate/{userId}/{jobId}")]
         public async Task<IActionResult> CalculateMatchScore(int userId, int jobId)
         {
@@ -36,7 +39,7 @@ namespace SkillBridge.Api.Controllers
 
             if (student == null || job == null)
             {
-                return NotFound(new { message = "Student profile or job posting not found in MySQL database." });
+                return NotFound(new { message = "Student profile or job posting not found." });
             }
 
             var result = _matcher.CalculateMatch(student, studentSkills, job);

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Diagnostics;
@@ -17,11 +18,12 @@ namespace SkillBridge.Api.Controllers
 
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]  // NLP analysis only for authenticated users
     public class NlpController : ControllerBase
     {
         private static readonly HttpClient _httpClient = new HttpClient();
 
-        // POST: /api/nlp/analyze (Invokes Python 3.12 NLP Engine)
+        // POST: /api/nlp/analyze
         [HttpPost("analyze")]
         public async Task<IActionResult> AnalyzeText([FromBody] NlpAnalyzeRequestDto dto)
         {
@@ -94,7 +96,7 @@ namespace SkillBridge.Api.Controllers
                 Console.WriteLine($"Python CLI invocation note: {ex.Message}");
             }
 
-            return StatusCode(500, new { message = "Failed to execute Python 3.12 NLP engine." });
+            return StatusCode(500, new { message = "Failed to execute NLP analysis engine." });
         }
     }
 }
