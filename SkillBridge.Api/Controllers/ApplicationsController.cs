@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SkillBridge.Api.Data;
@@ -25,6 +26,7 @@ namespace SkillBridge.Api.Controllers
 
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]  // All endpoints require a valid JWT
     public class ApplicationsController : ControllerBase
     {
         private readonly AppDbContext _db;
@@ -34,7 +36,7 @@ namespace SkillBridge.Api.Controllers
             _db = db;
         }
 
-        // GET: /api/applications (Fetches all job applications from MySQL database)
+        // GET: /api/applications — Any authenticated user (student sees own, recruiter sees all)
         [HttpGet]
         public async Task<IActionResult> GetApplications()
         {
@@ -42,7 +44,6 @@ namespace SkillBridge.Api.Controllers
                 .OrderByDescending(a => a.ApplicationDate)
                 .ToListAsync();
 
-            // Join with Users, StudentProfiles, and Jobs for full details
             var userIds = apps.Select(a => a.UserId).Distinct().ToList();
             var jobIds = apps.Select(a => a.JobId).Distinct().ToList();
 
@@ -60,7 +61,7 @@ namespace SkillBridge.Api.Controllers
                 users.TryGetValue(a.UserId, out var user);
                 jobs.TryGetValue(a.JobId, out var job);
 
-                string studentName = user != null ? $"{user.FirstName} {user.LastName}".Trim() : "Priyam Student";
+                string studentName = user != null ? $"{user.FirstName} {user.LastName}".Trim() : "Applicant";
                 if (string.IsNullOrEmpty(studentName)) studentName = "Student Applicant";
 
                 return new
@@ -68,25 +69,26 @@ namespace SkillBridge.Api.Controllers
                     id = a.ApplicationId.ToString(),
                     applicationId = a.ApplicationId.ToString(),
                     jobId = a.JobId.ToString(),
-                    jobTitle = job != null ? job.JobTitle : "Backend Engineering Intern",
-                    company = job != null ? job.CompanyName : "TechBridge Systems",
+                    jobTitle = job != null ? job.JobTitle : "Job Posting",
+                    company = job != null ? job.CompanyName : "Company",
                     studentId = a.UserId.ToString(),
                     studentName = studentName,
                     studentEmail = user != null ? user.Email : "student@university.edu",
                     degree = user?.StudentProfile?.Degree ?? "B.S. Computer Science",
-                    institution = user?.StudentProfile?.Institution ?? "State Institute of Technology",
+                    institution = user?.StudentProfile?.Institution ?? "University",
                     appliedDate = a.ApplicationDate.ToString("yyyy-MM-dd"),
                     status = a.Status,
                     matchScore = (int)a.MatchScorePct,
-                    stageNotes = a.Notes ?? "Application submitted and stored in MySQL."
+                    stageNotes = a.Notes ?? "Application submitted."
                 };
             });
 
             return Ok(result);
         }
 
-        // POST: /api/applications (Stores student application directly in MySQL)
+        // POST: /api/applications — Only Students can submit applications
         [HttpPost]
+        [Authorize(Roles = "Student")]
         public async Task<IActionResult> SubmitApplication([FromBody] CreateApplicationDto dto)
         {
             var app = new Application
@@ -96,7 +98,7 @@ namespace SkillBridge.Api.Controllers
                 ApplicationDate = DateTime.UtcNow,
                 MatchScorePct = dto.MatchScorePct,
                 Status = string.IsNullOrEmpty(dto.Status) ? "Under Review" : dto.Status,
-                Notes = dto.Notes ?? "Application submitted and saved to MySQL database."
+                Notes = dto.Notes ?? "Application submitted."
             };
 
             _db.Applications.Add(app);
@@ -113,8 +115,9 @@ namespace SkillBridge.Api.Controllers
             });
         }
 
-        // PUT: /api/applications/{id}/status (Updates application recruitment status in MySQL)
+        // PUT: /api/applications/{id}/status — Only Recruiters and Admins can update recruitment stage
         [HttpPut("{id}/status")]
+        [Authorize(Roles = "Recruiter,Admin")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateApplicationStatusDto dto)
         {
             var app = await _db.Applications.FindAsync(id);
@@ -127,7 +130,7 @@ namespace SkillBridge.Api.Controllers
             return Ok(new { id = app.ApplicationId.ToString(), status = app.Status });
         }
 
-        // DELETE: /api/applications/{id} (Deletes application / Student Opt Out from MySQL)
+        // DELETE: /api/applications/{id} — Students (withdraw) or Recruiters/Admins (reject) can delete
         [HttpDelete("{id}")]
         public async Task<IActionResult> WithdrawApplication(int id)
         {

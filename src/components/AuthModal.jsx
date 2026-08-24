@@ -151,8 +151,8 @@ export default function AuthModal({
           </p>
         </div>
 
-        {/* Role Selector Tabs (Student, Recruiter, Mentor, Admin) */}
-        <div className="grid grid-cols-4 gap-1.5 p-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+        {/* Role Selector Tabs (Student, Recruiter, Admin) */}
+        <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
           
           <button
             onClick={() => { setActiveRoleTab('Student'); setErrorMessage(''); }}
@@ -176,18 +176,6 @@ export default function AuthModal({
           >
             <Briefcase className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Recruiter</span>
-          </button>
-
-          <button
-            onClick={() => { setActiveRoleTab('Mentor'); setErrorMessage(''); }}
-            className={`py-2 px-2 rounded-lg font-bold flex items-center justify-center space-x-1.5 transition-all ${
-              activeRoleTab === 'Mentor' 
-                ? 'bg-emerald-600 text-white shadow-glow-emerald' 
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Mentor</span>
           </button>
 
           <button
@@ -250,13 +238,7 @@ export default function AuthModal({
             >
               Seed Recruiter (sarah.j@techbridge.io)
             </button>
-            <button
-              type="button"
-              onClick={() => handleQuickDemoFill('Mentor')}
-              className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 text-[11px] font-medium"
-            >
-              Seed Mentor (marcus.vance@university.edu)
-            </button>
+
           </div>
         </div>
 
