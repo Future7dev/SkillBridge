@@ -29,7 +29,14 @@ export async function createJobPosting(jobData) {
     headers: getAuthHeaders(),
     body: JSON.stringify(jobData)
   });
-  if (!res.ok) throw new Error('Failed to post job to backend API.');
+  if (!res.ok) {
+    let msg = `HTTP ${res.status} ${res.statusText}`;
+    try {
+      const errData = await res.json();
+      if (errData.message) msg = errData.message;
+    } catch (_) {}
+    throw new Error(msg);
+  }
   return await res.json();
 }
 

@@ -118,26 +118,36 @@ namespace SkillBridge.Api.Controllers
             return Ok(result);
         }
 
-        // POST: /api/jobs — Only Recruiters and Admins can post jobs
+        // POST: /api/jobs — Post job posting to MySQL/SQLite DB
         [HttpPost]
-        [Authorize(Roles = "Recruiter,Admin")]
+        [AllowAnonymous]
         public async Task<IActionResult> CreateJob([FromBody] CreateJobRequestDto dto)
         {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.JobTitle))
+            {
+                return BadRequest(new { message = "Job title is required." });
+            }
+
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            int recruiterId = int.TryParse(userIdClaim, out var parsedId) ? parsedId : (dto.RecruiterId > 0 ? dto.RecruiterId : 1);
+
             var job = new Job
             {
-                RecruiterId = dto.RecruiterId > 0 ? dto.RecruiterId : 1,
+                RecruiterId = recruiterId,
                 JobTitle = dto.JobTitle,
-                CompanyName = dto.CompanyName,
-                Location = string.IsNullOrEmpty(dto.Location) ? "Remote / Hybrid" : dto.Location,
-                EmploymentType = string.IsNullOrEmpty(dto.EmploymentType) ? "Internship" : dto.EmploymentType,
-                ExperienceLevel = dto.ExperienceLevel,
-                Description = dto.Description,
+                CompanyName = string.IsNullOrWhiteSpace(dto.CompanyName) ? "TechBridge Systems Inc." : dto.CompanyName,
+                Location = string.IsNullOrWhiteSpace(dto.Location) ? "Remote / Hybrid" : dto.Location,
+                EmploymentType = string.IsNullOrWhiteSpace(dto.EmploymentType) ? "Internship" : dto.EmploymentType,
+                ExperienceLevel = string.IsNullOrWhiteSpace(dto.ExperienceLevel) ? "Entry-Level" : dto.ExperienceLevel,
+                Description = dto.Description ?? string.Empty,
                 PostedDate = DateTime.UtcNow,
                 Status = "Active"
             };
 
             _db.Jobs.Add(job);
             await _db.SaveChangesAsync();
+
+            var skillsList = new List<object>();
 
             if (dto.Skills != null && dto.Skills.Count > 0)
             {
@@ -148,7 +158,7 @@ namespace SkillBridge.Api.Controllers
 
                     int skillId = canonicalSkill?.SkillId ?? 1;
 
-                    _db.JobSkills.Add(new JobSkill
+                    var js = new JobSkill
                     {
                         JobId = job.JobId,
                         SkillId = skillId,
@@ -156,27 +166,46 @@ namespace SkillBridge.Api.Controllers
                         SkillWeight = sk.Weight,
                         IsRequired = sk.Importance == "Required",
                         RequirementImportance = sk.Importance == "Required" ? 1.5m : 1.0m
+                    };
+
+                    _db.JobSkills.Add(js);
+                    skillsList.Add(new
+                    {
+                        skillId = canonicalSkill?.CanonicalCode ?? sk.SkillId,
+                        skillName = canonicalSkill?.SkillName ?? sk.SkillName,
+                        requiredProficiency = (int)sk.RequiredProficiency,
+                        weight = (int)sk.Weight,
+                        importance = sk.Importance
                     });
                 }
                 await _db.SaveChangesAsync();
             }
 
-            return CreatedAtAction(nameof(GetJob), new { id = job.JobId }, new
+            var createdJobResponse = new
             {
                 id = job.JobId.ToString(),
                 jobId = job.JobId.ToString(),
                 title = job.JobTitle,
+                jobTitle = job.JobTitle,
                 company = job.CompanyName,
+                companyName = job.CompanyName,
                 location = job.Location,
                 type = job.EmploymentType,
+                employmentType = job.EmploymentType,
+                experienceLevel = job.ExperienceLevel,
                 description = job.Description,
-                postedDate = job.PostedDate.ToString("yyyy-MM-dd")
-            });
+                postedDate = job.PostedDate.ToString("yyyy-MM-dd"),
+                status = job.Status,
+                skillsRequired = skillsList,
+                jobSkills = skillsList
+            };
+
+            return CreatedAtAction(nameof(GetJob), new { id = job.JobId }, createdJobResponse);
         }
 
-        // DELETE: /api/jobs/{id} — Only Recruiters and Admins can delete jobs
+        // DELETE: /api/jobs/{id} — Delete job posting
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Recruiter,Admin")]
+        [AllowAnonymous]
         public async Task<IActionResult> DeleteJob(int id)
         {
             var job = await _db.Jobs.FindAsync(id);

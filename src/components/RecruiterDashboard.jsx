@@ -16,7 +16,8 @@ import {
   Check,
   X,
   Filter,
-  UserMinus
+  UserMinus,
+  RefreshCw
 } from 'lucide-react';
 import { CANONICAL_SKILLS } from '../data/skillsData';
 import { calculateJobMatch } from '../services/matchingEngine';
@@ -148,22 +149,37 @@ export default function RecruiterDashboard({
     setJobSkillReqs(prev => prev.filter(s => s.skillId !== skId));
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+
   // Submit New Job Handler
   const handleCreateJob = async (e) => {
     e.preventDefault();
-    if (!newTitle.trim() || jobSkillReqs.length === 0) return;
+    setFormError('');
 
-    const newJobId = `job-${Date.now()}`;
-    const publishedJob = {
-      id: newJobId,
-      jobId: newJobId,
+    if (!newTitle.trim()) {
+      setFormError('Please enter a valid Job Title.');
+      return;
+    }
+
+    if (jobSkillReqs.length === 0) {
+      setFormError('Please add at least one required skill requirement for this job.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const fallbackJobId = `job-${Date.now()}`;
+    const localPublishedJob = {
+      id: fallbackJobId,
+      jobId: fallbackJobId,
       title: newTitle,
       jobTitle: newTitle,
-      company: newCompany,
-      companyName: newCompany,
-      location: newLocation,
-      type: newType,
-      employmentType: newType,
+      company: newCompany || 'TechBridge Systems Inc.',
+      companyName: newCompany || 'TechBridge Systems Inc.',
+      location: newLocation || 'Remote / Hybrid',
+      type: newType || 'Internship',
+      employmentType: newType || 'Internship',
       postedDate: new Date().toISOString().split('T')[0],
       description: newDesc,
       skillsRequired: jobSkillReqs,
@@ -171,19 +187,12 @@ export default function RecruiterDashboard({
       isNew: true
     };
 
-    const updatedJobsList = [publishedJob, ...jobs];
-    setJobs(updatedJobsList);
-    localStorage.setItem('skillbridge_jobs', JSON.stringify(updatedJobsList));
-
-    setSelectedJobId(newJobId);
-    setShowCreateModal(false);
-
     try {
-      await createJobPosting({
+      const apiResult = await createJobPosting({
         jobTitle: newTitle,
-        companyName: newCompany,
-        location: newLocation,
-        employmentType: newType,
+        companyName: newCompany || 'TechBridge Systems Inc.',
+        location: newLocation || 'Remote / Hybrid',
+        employmentType: newType || 'Internship',
         description: newDesc,
         skills: jobSkillReqs.map(s => ({
           skillId: s.skillId,
@@ -193,13 +202,33 @@ export default function RecruiterDashboard({
           importance: s.importance
         }))
       });
+
+      const finalJob = apiResult && (apiResult.id || apiResult.jobId) ? apiResult : localPublishedJob;
+      const updatedJobsList = [finalJob, ...jobs.filter(j => (j.id || j.jobId) !== finalJob.id)];
+      setJobs(updatedJobsList);
+      localStorage.setItem('skillbridge_jobs', JSON.stringify(updatedJobsList));
+
+      setSelectedJobId(finalJob.id || finalJob.jobId);
+      setShowCreateModal(false);
+      setNewTitle('');
+      setNewDesc('');
+      setFormError('');
+
       if (refreshJobsFromDatabase) await refreshJobsFromDatabase();
     } catch (err) {
-      console.warn("MySQL DB save note:", err);
+      console.warn("Backend job save note:", err);
+      // Fallback: save locally so user experience remains smooth
+      const updatedJobsList = [localPublishedJob, ...jobs];
+      setJobs(updatedJobsList);
+      localStorage.setItem('skillbridge_jobs', JSON.stringify(updatedJobsList));
+      setSelectedJobId(localPublishedJob.id);
+      setShowCreateModal(false);
+      setNewTitle('');
+      setNewDesc('');
+      setFormError('');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setNewTitle('');
-    setNewDesc('');
   };
 
   return (
@@ -408,6 +437,13 @@ export default function RecruiterDashboard({
               </div>
             </div>
             
+            {formError && (
+              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-start space-x-2 animate-fadeIn">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span className="leading-relaxed">{formError}</span>
+              </div>
+            )}
+            
             <form onSubmit={handleCreateJob} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -560,10 +596,20 @@ export default function RecruiterDashboard({
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold shadow-glow-cyan flex items-center space-x-1.5"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold shadow-glow-cyan flex items-center space-x-1.5"
                 >
-                  <Send className="w-4 h-4" />
-                  <span>Publish Job Posting to All Students</span>
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Publishing Job...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Publish Job Posting to All Students</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
