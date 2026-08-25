@@ -130,7 +130,7 @@ namespace SkillBridge.Api.Controllers
             return Ok(new { id = app.ApplicationId.ToString(), status = app.Status });
         }
 
-        // DELETE: /api/applications/{id} — Students (withdraw) or Recruiters/Admins (reject) can delete
+        // DELETE: /api/applications/{id} — Students (withdraw) or Recruiters/Admins (reject) can delete 
         [HttpDelete("{id}")]
         public async Task<IActionResult> WithdrawApplication(int id)
         {
