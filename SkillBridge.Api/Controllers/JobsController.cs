@@ -43,6 +43,7 @@ namespace SkillBridge.Api.Controllers
             _db = db;
         }
 
+        /// <summary>Returns all active job postings with required skills. Accessible to any authenticated user.</summary>
         // GET: /api/jobs — Any authenticated user can browse jobs
         [HttpGet]
         public async Task<IActionResult> GetJobs()
